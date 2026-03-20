@@ -87,7 +87,14 @@ app.post('/api/auth/google', async (req, res) => {
   try {
     const { code } = req.body;
     
+    console.log('🔍 Received Google OAuth request');
+    console.log('🔍 Code present:', !!code);
+    console.log('🔍 CLIENT_ID:', CLIENT_ID ? 'Set' : 'Not set');
+    console.log('🔍 CLIENT_SECRET:', CLIENT_SECRET ? 'Set' : 'Not set');
+    console.log('🔍 REDIRECT_URI:', REDIRECT_URI);
+    
     if (!code) {
+      console.error('❌ No authorization code provided');
       return res.status(400).json({ error: 'No authorization code provided' });
     }
 
@@ -168,11 +175,16 @@ app.post('/api/auth/google', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Google OAuth Error:', error.message);
+    console.error('❌ Google OAuth Error Details:');
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error stack:', error.stack);
+    
     res.status(500).json({
       success: false,
       message: 'Google authentication failed',
-      error: error.message
+      error: error.message,
+      details: error.code || 'Unknown error'
     });
   }
 });
