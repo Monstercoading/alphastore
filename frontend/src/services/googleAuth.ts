@@ -31,7 +31,8 @@ export const getGoogleUserInfo = async (code: string) => {
       throw new Error(data.message || 'Google authentication failed');
     }
     
-    return data.user;
+    // Return full response including user and token
+    return { user: data.user, token: data.token };
   } catch (error) {
     console.error('Google Auth Error:', error);
     
