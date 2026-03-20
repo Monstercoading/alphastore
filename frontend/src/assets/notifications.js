@@ -51,7 +51,7 @@ export const playWarningSound = () => {
 };
 
 // دالة الإشعار الرئيسية
-export const showNotification = (message, type = 'success') => {
+export const showNotification = (message, type = 'success', duration = 5000, onClick = null) => {
   // تشغيل الصوت المناسب
   switch (type) {
     case 'success':
@@ -107,7 +107,7 @@ export const showNotification = (message, type = 'success') => {
     notification.style.transform = 'translateX(0) scale(1)';
   }, 100);
   
-  // إزالة الإشعار بعد 5 ثواني
+  // إزالة الإشعار بعد المدة المحددة
   setTimeout(() => {
     notification.style.transform = 'translateX(-400px) scale(0.8)';
     notification.style.opacity = '0';
@@ -116,7 +116,17 @@ export const showNotification = (message, type = 'success') => {
         notification.parentNode.removeChild(notification);
       }
     }, 300);
-  }, 5000);
+  }, duration);
+  
+  // إضافة معالج النقر إذا تم توفيره
+  if (onClick && typeof onClick === 'function') {
+    notification.style.cursor = 'pointer';
+    notification.addEventListener('click', (e) => {
+      // لا تنفذ إذا تم النقر على زر الإغلاق
+      if (e.target === closeBtn) return;
+      onClick();
+    });
+  }
   
   // إضافة زر الإغلاق
   const closeBtn = notification.querySelector('.notification-close');

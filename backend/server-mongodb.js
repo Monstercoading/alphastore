@@ -284,7 +284,11 @@ app.post('/api/auth/register', async (req, res) => {
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ 
+        error: 'User already exists',
+        message: 'هذه المعلومات مستخدمة بالفعل',
+        redirectToLogin: true 
+      });
     }
     
     const newUser = new User({
@@ -298,6 +302,8 @@ app.post('/api/auth/register', async (req, res) => {
     const { password: _, ...userWithoutPassword } = savedUser.toObject();
     
     res.status(201).json({ 
+      success: true,
+      message: 'تم إنشاء الحساب بنجاح!',
       user: userWithoutPassword, 
       token: 'fake-jwt-token-' + savedUser._id 
     });

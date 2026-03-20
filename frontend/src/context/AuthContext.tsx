@@ -261,10 +261,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         payload: { user: newUser, token }
       });
 
-      showNotification(formatWelcomeMessage(newUser.firstName, newUser.lastName), 'success');
+      // Show success toast for account creation
+      showNotification('تم إنشاء الحساب بنجاح!', 'success');
+      
+      // Then show welcome message
+      setTimeout(() => {
+        showNotification(formatWelcomeMessage(newUser.firstName, newUser.lastName), 'success');
+      }, 1500);
+      
       navigateWithDelay('/', 2500);
     } catch (error: any) {
       const errorMessage = error.message || 'فشل إنشاء الحساب';
+      
+      // Check if error indicates user already exists
+      if (error.response?.data?.redirectToLogin || errorMessage.includes('مستخدمة')) {
+        showNotification(
+          'هذه المعلومات مستخدمة بالفعل. هل لديك حساب؟',
+          'error',
+          5000,
+          () => navigate('/login')
+        );
+      } else {
+        showNotification(errorMessage, 'error');
+      }
+      
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
       throw error;
     }
