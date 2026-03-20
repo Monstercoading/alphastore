@@ -8,7 +8,7 @@
     "client": "cd frontend && npm start",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "render:install": "cd backend && npm install",
-    "render:start": "cd backend && npm run start:mongo"
+    "render:start": "cd backend && npm start"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
