@@ -12,13 +12,21 @@ const PORT = process.env.PORT || 5000;
 
 // MongoDB Connection (optional, for user lookup)
 const MONGO_URI = process.env.MONGO_URI;
+let mongoConnected = false;
+
 if (MONGO_URI) {
   mongoose.connect(MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.log('⚠️ MongoDB not connected:', err.message));
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    mongoConnected = true;
+  })
+  .catch(err => {
+    console.log('⚠️ MongoDB not connected:', err.message);
+    mongoConnected = false;
+  });
 }
 
 // User Schema
@@ -65,7 +73,7 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     healthy: true,
-    mongo_connected: false,
+    mongo_connected: mongoConnected,
     timestamp: new Date().toISOString()
   });
 });
@@ -98,22 +106,37 @@ app.post('/api/auth/google', async (req, res) => {
     console.log('✅ User info received:', data.email);
 
     // Check if user exists in database
-    let user = await User.findOne({ email: data.email });
+    let user = null;
     let isNewUser = false;
     
-    if (!user) {
-      // Create new user if not exists
-      user = new User({
+    if (mongoConnected) {
+      user = await User.findOne({ email: data.email });
+      
+      if (!user) {
+        // Create new user if not exists
+        user = new User({
+          email: data.email,
+          firstName: data.given_name || data.name?.split(' ')[0] || 'User',
+          lastName: data.family_name || data.name?.split(' ').slice(1).join(' ') || '',
+          role: 'user'
+        });
+        await user.save();
+        isNewUser = true;
+        console.log('✅ New user created:', user.email);
+      } else {
+        console.log('✅ Existing user logged in:', user.email);
+      }
+    } else {
+      // Fallback to mock data if MongoDB not connected
+      user = {
+        _id: data.id,
         email: data.email,
         firstName: data.given_name || data.name?.split(' ')[0] || 'User',
         lastName: data.family_name || data.name?.split(' ').slice(1).join(' ') || '',
         role: 'user'
-      });
-      await user.save();
+      };
       isNewUser = true;
-      console.log('✅ New user created:', user.email);
-    } else {
-      console.log('✅ Existing user logged in:', user.email);
+      console.log('⚠️ MongoDB not connected, using mock user data');
     }
 
     // Create JWT token
