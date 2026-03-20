@@ -4,6 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv');
 
+// Load Google Auth routes
+const googleAuth = require('./googleAuth');
+
 dotenv.config();
 
 const app = express();
@@ -345,6 +348,9 @@ app.get('/api/auth/me', async (req, res) => {
     res.status(500).json({ error: 'Failed to get user', message: err.message });
   }
 });
+
+// Google OAuth routes
+app.use('/api/auth', googleAuth);
 
 // ========== ROOT ROUTE ==========
 
