@@ -276,11 +276,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check if error indicates user already exists
       if (error.response?.data?.redirectToLogin || errorMessage.includes('مستخدمة')) {
         showNotification(
-          'هذه المعلومات مستخدمة بالفعل. هل لديك حساب؟',
+          'هذه المعلومات مستخدمة بالفعل. سيتم توجيهك للتسجيل الدخول...',
           'error',
-          5000,
-          () => navigate('/login')
+          5000
         );
+        // Redirect to login after delay
+        setTimeout(() => navigate('/login'), 3000);
       } else {
         showNotification(errorMessage, 'error');
       }
