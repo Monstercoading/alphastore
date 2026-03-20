@@ -1,7 +1,7 @@
 // API Configuration for Alpha Store
 // Update this when deploying to production
 
-export const API_BASE_URL = 'https://alphastore-ap.onrender.com';
+export const API_BASE_URL = 'https://alphastore-6rvv.onrender.com';
 export const API_URL = `${API_BASE_URL}/api`;
 export const UPLOADS_URL = API_BASE_URL;
 

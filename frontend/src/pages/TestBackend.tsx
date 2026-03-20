@@ -10,18 +10,21 @@ const TestBackend: React.FC = () => {
     setResult('Testing backend connection...');
     
     try {
-      const response = await fetch(`${API_URL}/auth/test`, {
+      // Test root endpoint first
+      const rootResponse = await fetch('https://alphastore-6rvv.onrender.com/', {
         method: 'GET',
+        mode: 'cors',
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setResult(`✅ Backend is working! Response: ${JSON.stringify(data)}`);
+      const rootText = await rootResponse.text();
+      
+      if (rootResponse.ok) {
+        setResult(`✅ Root endpoint working!\nStatus: ${rootResponse.status}\nResponse: ${rootText.substring(0, 100)}`);
       } else {
-        setResult(`❌ Backend responded with status: ${response.status}`);
+        setResult(`❌ Root endpoint error\nStatus: ${rootResponse.status}\nResponse: ${rootText.substring(0, 200)}`);
       }
-    } catch (error) {
-      setResult(`❌ Cannot connect to backend: ${error}`);
+    } catch (error: any) {
+      setResult(`❌ Cannot connect:\n${error.message}\n\nPossible causes:\n- Backend not deployed\n- CORS issue\n- Network error`);
     } finally {
       setLoading(false);
     }

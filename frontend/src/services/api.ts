@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://alphastore-ap.onrender.com/api';
+const API_BASE_URL = 'https://alphastore-6rvv.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
