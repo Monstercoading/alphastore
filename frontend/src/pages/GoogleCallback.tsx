@@ -50,10 +50,12 @@ const GoogleCallback: React.FC = () => {
         // Redirect to home
         window.location.href = '/';
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Callback error:', error);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error stack:', error.stack);
         showNotification('فشل تسجيل الدخول عبر Google. يرجى المحاولة مرة أخرى.', 'error');
-        window.location.href = '/?error=callback_failed';
+        window.location.href = `/?error=callback_failed&details=${encodeURIComponent(error.message)}`;
       }
     };
 
