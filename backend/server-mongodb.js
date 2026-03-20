@@ -352,6 +352,20 @@ app.get('/api/auth/me', async (req, res) => {
 // Google OAuth routes
 app.use('/api/auth', googleAuth);
 
+// Debug: Log all registered routes
+console.log('📋 Registered routes:');
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`  ${Object.keys(middleware.route.methods).join(',').toUpperCase()} ${middleware.route.path}`);
+  } else if (middleware.name === 'router') {
+    middleware.handle.stack.forEach((handler) => {
+      if (handler.route) {
+        console.log(`  ${Object.keys(handler.route.methods).join(',').toUpperCase()} ${middleware.regexp} ${handler.route.path}`);
+      }
+    });
+  }
+});
+
 // ========== ROOT ROUTE ==========
 
 app.get('/', (req, res) => {
