@@ -5,9 +5,10 @@ import { API_URL } from '../config/api';
 
 export const getGoogleUserInfo = async (code: string) => {
   try {
-    console.log('Sending code to backend:', code);
+    console.log('📤 Sending code to backend:', code.substring(0, 20) + '...');
+    console.log('📤 API_URL:', `${API_URL}/auth/google`);
     
-    // إرسال الكود للـ Backend لاستبداله بـ token والحصول على بيانات المستخدم
+    // إرسال الكود للـ Backend
     const response = await fetch(`${API_URL}/auth/google`, {
       method: 'POST',
       headers: {
@@ -16,29 +17,36 @@ export const getGoogleUserInfo = async (code: string) => {
       body: JSON.stringify({ code }),
     });
 
-    console.log('Backend response status:', response.status);
+    console.log('📥 Backend response status:', response.status);
+    console.log('📥 Backend response OK:', response.ok);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Backend error response:', errorData);
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('❌ Backend error response:', errorData);
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        const text = await response.text();
+        console.error('❌ Backend error text:', text);
+        errorMessage = text || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    console.log('Backend response data:', data);
+    console.log('✅ Backend response data:', data);
     
     if (!data.success) {
       throw new Error(data.message || 'Google authentication failed');
     }
     
-    // Return full response including user and token
     return { user: data.user, token: data.token };
-  } catch (error) {
-    console.error('Google Auth Error:', error);
+  } catch (error: any) {
+    console.error('❌ Google Auth Error:', error);
     
-    // إذا كان الخطأ متعلق بالشبكة، نعطي رسالة أوضح
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Cannot connect to backend server. Please make sure the backend is running on port 5000.');
+      throw new Error(`Cannot connect to backend at ${API_URL}. Please check if server is running.`);
     }
     
     throw error;
