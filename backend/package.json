@@ -7,10 +7,10 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "start": "node server-mongodb.js",
-    "dev": "nodemon server-mongodb.js",
-    "start:json": "node server.js",
-    "dev:json": "nodemon server.js"
+    "start": "node server-simple.js",
+    "dev": "nodemon server-simple.js",
+    "start:mongo": "node server-mongodb.js",
+    "dev:mongo": "nodemon server-mongodb.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
