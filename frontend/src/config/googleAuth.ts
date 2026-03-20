@@ -1,6 +1,6 @@
 export const GOOGLE_AUTH_CONFIG = {
   CLIENT_ID: '866642345311-4kiub26p4228g5q7edh3svh05vmn19gn.apps.googleusercontent.com',
-  REDIRECT_URI: 'https://silver-frangipane-2ddeca.netlify.app/auth/google/callback',
+  REDIRECT_URI: 'https://alphastore-2fx1j98pc-monstercoadings-projects.vercel.app/auth/google/callback',
   SCOPE: 'openid profile email',
   RESPONSE_TYPE: 'code',
 };
