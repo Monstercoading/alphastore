@@ -1,0 +1,201 @@
+/* RTL and Text Direction Fix */
+.rtl-text {
+  direction: rtl;
+  text-align: right;
+}
+
+.english-text {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+.mixed-text {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+
+/* Global RTL fixes */
+body {
+  direction: rtl;
+  text-align: right;
+}
+
+/* English brand names and titles */
+.english-brand {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: 'Inter', 'Arial', sans-serif;
+}
+
+/* Arabic text with English words */
+.arabic-english {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Buttons with mixed content */
+.btn-mixed {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Headings with mixed content */
+.heading-mixed {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Navigation items */
+.nav-item {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Form labels and inputs */
+.form-label {
+  direction: rtl;
+  text-align: right;
+}
+
+.form-input {
+  direction: rtl;
+  text-align: right;
+}
+
+.english-input {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+/* Card content */
+.card-content {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Links with mixed content */
+.link-mixed {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Notification text */
+.notification-text {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Loading text */
+.loading-text {
+  direction: rtl;
+  text-align: center;
+  unicode-bidi: plaintext;
+}
+
+/* Game titles and descriptions */
+.game-title {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+.game-description {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Price and currency */
+.price-text {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: 'Inter', 'Arial', sans-serif;
+}
+
+/* Status badges */
+.status-badge {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Table content */
+.table-cell {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+.english-cell {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+/* Dropdown menus */
+.dropdown-item {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Modal content */
+.modal-content {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Error and success messages */
+.message-text {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Helper text */
+.helper-text {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Placeholder text */
+::placeholder {
+  text-align: right;
+  direction: rtl;
+}
+
+.english-placeholder::placeholder {
+  text-align: left;
+  direction: ltr;
+}
+
+/* Fix for common mixed content scenarios */
+.alpha-store {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: 'Inter', 'Arial', sans-serif;
+  font-weight: bold;
+}
+
+.monster-name {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: 'Inter', 'Arial', sans-serif;
+}
+
+/* Ensure proper spacing around English words */
+.english-word {
+  margin: 0 2px;
+  unicode-bidi: isolate;
+}
+
+/* Responsive RTL fixes */
+@media (max-width: 768px) {
+  .mobile-rtl {
+    direction: rtl;
+    text-align: right;
+  }
+  
+  .mobile-english {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+  }
+}

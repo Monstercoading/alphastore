@@ -1,0 +1,581 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { NavigationProvider } from './context/NavigationContext';
+import Navbar from './components/Navbar';
+import Notifications from './components/Notifications';
+import Loading from './components/Loading';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import GameDetail from './pages/GameDetail';
+import Cart from './pages/Cart';
+import Profile from './pages/Profile';
+import Favorites from './pages/Favorites';
+import GoogleCallback from './pages/GoogleCallback';
+import TestBackend from './pages/TestBackend';
+
+// AdminDashboard component defined inline to avoid import issues
+interface Game {
+  _id: string;
+  title: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  discount?: number;
+  platform: string;
+  image: string;
+  images?: string[];
+  availability: string;
+  region: string;
+  category?: string;
+  isNew?: boolean;
+}
+
+const AdminDashboard = () => {
+  const { state } = useAuth();
+  const [games, setGames] = React.useState<Game[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('games');
+  const [showAddForm, setShowAddForm] = React.useState(false);
+  const [gameForm, setGameForm] = React.useState({
+    title: '',
+    description: '',
+    price: '',
+    platform: 'PC',
+    availability: 'available'
+  });
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [platformFilter, setPlatformFilter] = React.useState('all');
+
+  React.useEffect(() => {
+    if (state.isAuthenticated && state.user?.role === 'admin') {
+      fetchGames();
+    }
+  }, [state.isAuthenticated]);
+
+  // Filter games based on search and platform
+  const filteredGames = games.filter(game => {
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlatform = platformFilter === 'all' || game.platform === platformFilter;
+    return matchesSearch && matchesPlatform;
+  });
+
+  const fetchGames = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/games');
+      if (response.ok) {
+        const data = await response.json();
+        setGames(data);
+      } else {
+        // Use mock data if backend is not available
+        const mockGames = [
+          {
+            _id: '1',
+            title: 'Fortnite - Account Level 150',
+            description: 'حساب Fortnite بمستوى 150 مع شخصيات نادرة',
+            price: 299.99,
+            originalPrice: 399.99,
+            discount: 25,
+            platform: 'PC',
+            image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Fortnite',
+            images: ['https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Fortnite'],
+            availability: 'available',
+            region: 'Global',
+            isNew: true
+          },
+          {
+            _id: '2',
+            title: 'PUBG Mobile - Max Level Account',
+            description: 'حساب PUBG Mobile بأعلى مستوى وكل الأسلحة',
+            price: 199.99,
+            originalPrice: 299.99,
+            discount: 33,
+            platform: 'Mobile',
+            image: 'https://via.placeholder.com/300x200/4ECDC4/FFFFFF?text=PUBG',
+            images: ['https://via.placeholder.com/300x200/4ECDC4/FFFFFF?text=PUBG'],
+            availability: 'available',
+            region: 'Middle East',
+            isNew: false
+          },
+          {
+            _id: '3',
+            title: 'Call of Duty Warzone - Premium Account',
+            description: 'حساب COD Warzone مع كل الباقات المميزة',
+            price: 149.99,
+            originalPrice: 199.99,
+            discount: 25,
+            platform: 'PC',
+            image: 'https://via.placeholder.com/300x200/45B7D1/FFFFFF?text=COD',
+            images: ['https://via.placeholder.com/300x200/45B7D1/FFFFFF?text=COD'],
+            availability: 'available',
+            region: 'Europe',
+            isNew: false
+          }
+        ];
+        setGames(mockGames);
+      }
+    } catch (error) {
+      console.error('Error fetching games:', error);
+      // Use mock data as fallback
+      const mockGames = [
+        {
+          _id: '1',
+          title: 'Fortnite - Account Level 150',
+          description: 'حساب Fortnite بمستوى 150 مع شخصيات نادرة',
+          price: 299.99,
+          originalPrice: 399.99,
+          discount: 25,
+          platform: 'PC',
+          image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Fortnite',
+          images: ['https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Fortnite'],
+          availability: 'available',
+          region: 'Global',
+          isNew: true
+        }
+      ];
+      setGames(mockGames);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddGame = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:5000/api/games', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...gameForm,
+          price: parseFloat(gameForm.price),
+          category: 'general',
+          stock: 1,
+          rating: 4.5,
+          reviews: 0,
+          image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=New+Game',
+          images: ['https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=New+Game'],
+          availability: gameForm.availability
+        }),
+      });
+
+      if (response.ok) {
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(() => {});
+        alert('تمت إضافة اللعبة بنجاح!');
+        fetchGames();
+        setShowAddForm(false);
+        setGameForm({
+          title: '',
+          description: '',
+          price: '',
+          platform: 'PC',
+          availability: 'available'
+        });
+      }
+    } catch (error) {
+      console.error('Error adding game:', error);
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذه اللعبة؟')) {
+      try {
+        await fetch(`http://localhost:5000/api/games/${gameId}`, {
+          method: 'DELETE',
+        });
+        fetchGames();
+      } catch (error) {
+        console.error('Error deleting game:', error);
+      }
+    }
+  };
+
+  const handleUpdatePrice = async (gameId: string, currentPrice: number) => {
+    const newPrice = prompt('أدخل السعر الجديد:', currentPrice.toString());
+    if (newPrice && !isNaN(parseFloat(newPrice))) {
+      try {
+        await fetch(`http://localhost:5000/api/games/${gameId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ price: parseFloat(newPrice) }),
+        });
+        alert('تم تحديث السعر بنجاح!');
+        fetchGames();
+      } catch (error) {
+        console.error('Error updating price:', error);
+      }
+    }
+  };
+
+  const handleAddDiscount = async (gameId: string) => {
+    const discount = prompt('أدخل نسبة الخصم (0-100):');
+    if (discount && !isNaN(parseFloat(discount))) {
+      try {
+        await fetch(`http://localhost:5000/api/games/${gameId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ discount: parseFloat(discount) }),
+        });
+        alert('تم إضافة الخصم بنجاح!');
+        fetchGames();
+      } catch (error) {
+        console.error('Error adding discount:', error);
+      }
+    }
+  };
+  
+  if (!state.isAuthenticated || state.user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white mb-4">غير مصرح بالوصول</h1>
+          <p className="text-gray-400">يجب أن تكون مديراً للوصول إلى هذه الصفحة</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-4xl font-bold text-white mb-8 bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+          🎮 لوحة تحكم Alpha Store
+        </h1>
+        
+        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+          <div className="border-b border-gray-700">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('games')}
+                className={`py-4 px-8 text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'games'
+                    ? 'border-b-2 border-red-600 text-red-400 bg-gray-700/50'
+                    : 'text-gray-400 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-700/30'
+                }`}
+              >
+                إدارة الألعاب
+              </button>
+              <button
+                onClick={() => setActiveTab('add')}
+                className={`py-4 px-8 text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'add'
+                    ? 'border-b-2 border-red-600 text-red-400 bg-gray-700/50'
+                    : 'text-gray-400 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-700/30'
+                }`}
+              >
+                إضافة لعبة
+              </button>
+            </nav>
+          </div>
+
+          <div className="p-8">
+            {activeTab === 'games' && (
+              <>
+                {/* Header Controls */}
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 space-y-4 lg:space-y-0">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      الألعاب ({filteredGames.length})
+                    </h2>
+                    <p className="text-gray-400 text-sm">إدارة جميع الألعاب في المتجر</p>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="البحث عن لعبة..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full sm:w-64 px-4 py-3 pl-10 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-red-500 focus:ring-2 focus:ring-red-500 focus:outline-none transition-all duration-200 placeholder-gray-400"
+                      />
+                      <svg className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    
+                    {/* Platform Filter */}
+                    <select
+                      value={platformFilter}
+                      onChange={(e) => setPlatformFilter(e.target.value)}
+                      className="px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-red-500 focus:ring-2 focus:ring-red-500 focus:outline-none transition-all duration-200"
+                    >
+                      <option value="all">🎮 جميع المنصات</option>
+                      <option value="PC">💻 PC</option>
+                      <option value="Console">🎮 Console</option>
+                      <option value="Mobile">📱 Mobile</option>
+                    </select>
+                    
+                    {/* Add Game Button */}
+                    <button
+                      onClick={() => setActiveTab('add')}
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-red-500/25"
+                    >
+                      ➕ إضافة لعبة
+                    </button>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-16">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+                    <p className="text-gray-400 mt-4">جاري التحميل...</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    {/* Modern Table */}
+                    <table className="min-w-full">
+                      {/* Table Header */}
+                      <thead className="bg-gray-900/50 border-b border-gray-700">
+                        <tr>
+                          <th className="px-6 py-4 text-right text-xs font-bold text-gray-300 uppercase tracking-wider">
+                            اللعبة
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-bold text-gray-300 uppercase tracking-wider">
+                            الحالة
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-bold text-gray-300 uppercase tracking-wider">
+                            السعر
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-bold text-gray-300 uppercase tracking-wider">
+                            المنصة
+                          </th>
+                          <th className="px-6 py-4 text-right text-xs font-bold text-gray-300 uppercase tracking-wider">
+                            الإجراءات
+                          </th>
+                        </tr>
+                      </thead>
+                      
+                      {/* Table Body */}
+                      <tbody className="divide-y divide-gray-700">
+                        {filteredGames.map((game) => (
+                          <tr 
+                            key={game._id} 
+                            className="hover:bg-gray-700/30 transition-colors duration-200 cursor-pointer"
+                          >
+                            {/* Game Thumbnail + Title */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-12 w-12">
+                                  <img
+                                    className="h-12 w-12 rounded-lg object-cover border border-gray-600"
+                                    src={game.image}
+                                    alt=""
+                                  />
+                                </div>
+                                <div className="mr-4">
+                                  <div className="text-sm font-medium text-white">
+                                    {game.title}
+                                  </div>
+                                  <div className="text-sm text-gray-400">
+                                    {game.category || 'ألعاب'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Status Badge */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                game.availability === 'available' 
+                                  ? 'bg-green-600/20 text-green-400 border border-green-600/50' 
+                                  : 'bg-red-600/20 text-red-400 border border-red-600/50'
+                              }`}>
+                                {game.availability === 'available' ? '✅ متاح' : '❌ غير متاح'}
+                              </span>
+                            </td>
+                            
+                            {/* Price */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-300">
+                                {game.originalPrice && (
+                                  <span className="text-gray-500 line-through text-xs ml-2">
+                                    ${game.originalPrice}
+                                  </span>
+                                )}
+                                <span className="text-lg font-bold text-green-400">
+                                  ${game.price}
+                                </span>
+                                {game.discount && (
+                                  <span className="ml-2 text-xs text-yellow-400">
+                                    -{game.discount}%
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            
+                            {/* Platform with Icon */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-gray-300">
+                                {game.platform === 'PC' && (
+                                  <>
+                                    <svg className="w-4 h-4 ml-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                                    </svg>
+                                    {game.platform}
+                                  </>
+                                )}
+                                {game.platform === 'Console' && (
+                                  <>
+                                    <svg className="w-4 h-4 ml-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                    </svg>
+                                    {game.platform}
+                                  </>
+                                )}
+                                {game.platform === 'Mobile' && (
+                                  <>
+                                    <svg className="w-4 h-4 ml-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zm3 14a1 1 0 100-2 1 1 0 000 2z"/>
+                                    </svg>
+                                    {game.platform}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            
+                            {/* Action Buttons */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex items-center space-x-2">
+                                {/* Edit Price Button */}
+                                <button
+                                  onClick={() => handleUpdatePrice(game._id, game.price)}
+                                  className="text-blue-400 hover:text-blue-300 transition-colors duration-200 transform hover:scale-110"
+                                  title="تعديل السعر"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Discount Button */}
+                                <button
+                                  onClick={() => handleAddDiscount(game._id)}
+                                  className="text-green-400 hover:text-green-300 transition-colors duration-200 transform hover:scale-110"
+                                  title="إضافة خصم"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleDeleteGame(game._id)}
+                                  className="text-red-400 hover:text-red-300 transition-colors duration-200 transform hover:scale-110"
+                                  title="حذف اللعبة"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {filteredGames.length === 0 && (
+                      <div className="text-center py-12">
+                        <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-white mb-2">لا توجد ألعاب</h3>
+                        <p className="text-gray-400 mb-6">لم يتم العثور على ألعاب مطابقة لبحثك</p>
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            setPlatformFilter('all');
+                          }}
+                          className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          إعادة تعيين الفلاتر
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+                    </label>
+                    <select
+                      value={gameForm.platform}
+                      onChange={(e) => setGameForm({...gameForm, platform: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="PC">PC</option>
+                      <option value="Console">Console</option>
+                      <option value="Mobile">Mobile</option>
+                    </select>
+                  </div>
+                  <div className="mt-6">
+                    <button
+                      type="submit"
+                      className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                    >
+                      إضافة اللعبة
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <NavigationProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </NavigationProvider>
+    </Router>
+  );
+}
+
+function AppContent() {
+  const { isNavigationLoading } = useAuth();
+  
+  return (
+    <>
+      {isNavigationLoading && <Loading />}
+      <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/game/:id" element={<GameDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
+          <Route path="/test-backend" element={<TestBackend />} />
+          <Route path="/search" element={<Home />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Notifications />
+      </div>
+    </>
+  );
+}
+
+export default App;

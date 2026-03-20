@@ -1,0 +1,3 @@
+// This is a placeholder for the notification sound file
+// In a real application, you would place an actual MP3 file here
+// For now, the audio will fail silently which is expected

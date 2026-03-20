@@ -1,0 +1,16 @@
+{
+  "name": "gaming-accounts-marketplace",
+  "version": "1.0.0",
+  "description": "A marketplace for buying and selling gaming accounts",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "render:install": "cd backend && npm install",
+    "render:start": "cd backend && npm run start:mongo"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

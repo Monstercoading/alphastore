@@ -1,0 +1,32 @@
+{
+  "name": "gaming-accounts-backend",
+  "version": "1.0.0",
+  "description": "Backend API for gaming accounts marketplace - Production Ready",
+  "main": "server.js",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required for Node.js'",
+    "test": "echo 'No tests specified'"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "api",
+    "gaming",
+    "marketplace"
+  ],
+  "author": "Alpha Store",
+  "license": "MIT"
+}

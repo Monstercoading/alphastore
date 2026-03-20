@@ -1,0 +1,80 @@
+import axios from 'axios';
+
+const API_BASE_URL = 'https://alphastore-ap.onrender.com/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Auth APIs
+export const authAPI = {
+  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
+  register: (userData: any) => api.post('/auth/register', userData),
+  verifyToken: () => api.get('/auth/verify'),
+  googleAuth: (code: string) => api.post('/auth/google', { code }),
+};
+
+// Games APIs - Use real API
+export const gamesAPI = {
+  getGames: (filters?: any) => api.get('/products', { params: filters }),
+  getGame: (id: string) => api.get(`/products/${id}`),
+  createGame: (gameData: any) => api.post('/products', gameData),
+  updateGame: (id: string, gameData: any) => api.put(`/products/${id}`, gameData),
+  deleteGame: (id: string) => api.delete(`/products/${id}`),
+};
+
+// Orders APIs
+export const ordersAPI = {
+  createOrder: (orderData: any) => api.post('/orders', orderData),
+  getMyOrders: () => api.get('/orders/my-orders'),
+  getAllOrders: () => api.get('/orders'),
+  updateOrderStatus: (id: string, status: string) => api.put(`/orders/${id}/status`, { status }),
+};
+
+// Admin APIs - Use real API
+export const adminAPI = {
+  getDashboard: () => api.get('/admin/dashboard'),
+  getUsers: () => api.get('/admin/users'),
+  getOrders: () => api.get('/admin/orders'),
+  getGames: () => api.get('/products'),
+  updateOrderStatus: (id: string, status: string) => api.put(`/admin/orders/${id}/status`, { status }),
+};
+
+// Upload APIs
+export const uploadAPI = {
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  uploadImages: (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      formData.append(`images`, file);
+    });
+    return api.post('/upload/images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+
+export default api;
+" " 
