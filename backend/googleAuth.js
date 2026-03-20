@@ -8,7 +8,7 @@ const router = express.Router();
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 // IMPORTANT: This must match the redirect_uri used in frontend Google OAuth flow
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://alphastore-2fx1j98pc-monstercoadings-projects.vercel.app/auth/google/callback';
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://alphastore-vert.vercel.app/auth/google/callback';
 
 // التحقق من وجود المتغيرات
 if (!CLIENT_ID || !CLIENT_SECRET) {

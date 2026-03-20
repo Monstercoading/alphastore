@@ -23,13 +23,13 @@ const GoogleCallback: React.FC = () => {
 
         if (error) {
           console.error('❌ Google OAuth error from URL:', error);
-          window.location.href = '/?error=google_auth_failed';
+          window.location.href = '/?error=google_rejected';
           return;
         }
 
         if (!code) {
           console.error('❌ No authorization code received');
-          window.location.href = '/?error=no_code_received';
+          window.location.href = '/?error=no_code';
           return;
         }
 

@@ -4,7 +4,7 @@ import { showNotification } from '../assets/notifications';
 import { formatWelcomeMessage } from '../utils/nameFormatter';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import { userAPI } from '../services/userAPI';
-import { GOOGLE_AUTH_CONFIG } from '../config/googleAuth';
+import { GOOGLE_AUTH_CONFIG, initiateGoogleSignIn } from '../config/googleAuth';
 
 interface User {
   _id: string;
@@ -233,16 +233,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch({ type: 'LOGIN_START' });
       
-      // Redirect to Google OAuth using config from googleAuth.ts
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_AUTH_CONFIG.CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(GOOGLE_AUTH_CONFIG.REDIRECT_URI)}&` +
-        `response_type=${GOOGLE_AUTH_CONFIG.RESPONSE_TYPE}&` +
-        `scope=${encodeURIComponent(GOOGLE_AUTH_CONFIG.SCOPE)}&` +
-        `access_type=offline&` +
-        `prompt=consent`;
-      
-      window.location.href = googleAuthUrl;
+      // Use the new Google OAuth function
+      initiateGoogleSignIn();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'فشل تسجيل الدخول عبر Google';
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
