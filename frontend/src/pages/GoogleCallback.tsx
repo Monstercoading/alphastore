@@ -16,26 +16,42 @@ const GoogleCallback: React.FC = () => {
       try {
         const code = searchParams.get('code');
         const error = searchParams.get('error');
+        
+        console.log('🔍 GoogleCallback mounted');
+        console.log('🔍 Code from URL:', code ? 'exists' : 'null');
+        console.log('🔍 Error from URL:', error);
 
         if (error) {
-          console.error('Google OAuth error:', error);
+          console.error('❌ Google OAuth error from URL:', error);
           window.location.href = '/?error=google_auth_failed';
           return;
         }
 
         if (!code) {
-          console.error('No authorization code received');
+          console.error('❌ No authorization code received');
           window.location.href = '/?error=no_code_received';
           return;
         }
 
-        console.log('Received Google auth code:', code);
+        console.log('✅ Received Google auth code, calling backend...');
 
         // الحصول على بيانات Google الفعلية من Backend
-        const response = await getGoogleUserInfo(code);
-        console.log('Google auth response:', response);
+        let response;
+        try {
+          response = await getGoogleUserInfo(code);
+          console.log('✅ Backend response received:', response);
+        } catch (apiError: any) {
+          console.error('❌ API call failed:', apiError.message);
+          throw new Error(`Backend API failed: ${apiError.message}`);
+        }
+        
+        if (!response || !response.user) {
+          console.error('❌ Invalid response format:', response);
+          throw new Error('Invalid response from server - missing user data');
+        }
         
         const { user: googleUserData, token } = response;
+        console.log('✅ Extracted user and token');
         
         // Store JWT token in localStorage
         if (token) {
@@ -51,11 +67,14 @@ const GoogleCallback: React.FC = () => {
         window.location.href = '/';
         
       } catch (error: any) {
-        console.error('❌ Callback error:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error stack:', error.stack);
-        showNotification('فشل تسجيل الدخول عبر Google. يرجى المحاولة مرة أخرى.', 'error');
-        window.location.href = `/?error=callback_failed&details=${encodeURIComponent(error.message)}`;
+        console.error('❌ Final catch - Callback error:', error);
+        console.error('❌ Error type:', typeof error);
+        console.error('❌ Error message:', error?.message || 'No message');
+        console.error('❌ Error stack:', error?.stack || 'No stack');
+        
+        const errorMsg = error?.message || 'Unknown error occurred';
+        showNotification(`فشل تسجيل الدخول: ${errorMsg}`, 'error');
+        window.location.href = `/?error=callback_failed&details=${encodeURIComponent(errorMsg)}`;
       }
     };
 
