@@ -657,6 +657,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
