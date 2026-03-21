@@ -252,6 +252,14 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
         timestamp: new Date()
       });
 
+      // Also emit receiveMessage for frontend compatibility
+      reqIo.to(conversationId).emit('receiveMessage', {
+        conversationId,
+        message,
+        senderType,
+        timestamp: new Date()
+      });
+
       // Notify admin if customer sends message
       if (senderType === 'customer') {
         reqIo.emit('newConversationMessage', {

@@ -49,6 +49,14 @@ const Conversation: React.FC = () => {
         }
       });
 
+      // Listen for receiveMessage event (backend emits this)
+      socketService.on('receiveMessage', (data) => {
+        if (data.conversationId === id) {
+          setMessages(prev => [...prev, data.message]);
+          scrollToBottom();
+        }
+      });
+
       // Listen for typing indicators
       socketService.onUserTyping((data) => {
         if (data.conversationId === id) {
@@ -278,10 +286,13 @@ const Conversation: React.FC = () => {
               <p className={`text-xs mt-1 ${
                 isCurrentUser(message.senderType) ? 'text-blue-200' : 'text-gray-400'
               }`}>
-                {new Date(message.createdAt).toLocaleTimeString('ar-SA', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+                {message.createdAt 
+                  ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'الآن'
+                }
                 {isCurrentUser(message.senderType) && message.isRead && (
                   <span className="mr-2">✓✓ تمت القراءة</span>
                 )}

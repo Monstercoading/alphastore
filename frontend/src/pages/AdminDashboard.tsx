@@ -282,6 +282,24 @@ const AdminDashboard: React.FC = () => {
         loadConversations(); // Refresh conversations
         playMessageSound();
       });
+
+      // Also listen for newMessage events
+      socketService.on('newMessage', (data) => {
+        console.log('New message received:', data);
+        if (data.senderType === 'customer') {
+          loadConversations(); // Refresh conversations
+          playMessageSound();
+        }
+      });
+
+      // Listen for receiveMessage events
+      socketService.on('receiveMessage', (data) => {
+        console.log('Message received:', data);
+        if (data.senderType === 'customer') {
+          loadConversations(); // Refresh conversations
+          playMessageSound();
+        }
+      });
       
       // Set up polling for new conversations every 10 seconds (backup)
       const pollInterval = setInterval(() => {
