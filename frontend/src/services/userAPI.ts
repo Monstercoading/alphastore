@@ -1,5 +1,23 @@
-// Mock API for user management
-// In a real app, this would connect to a backend
+// Real API for user management with backend
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add token interceptor
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export interface User {
   _id: string;
@@ -146,32 +164,45 @@ class UserAPI {
     }
   }
 
-  // Create new user
+  // Create new user via backend API with duplicate check
   async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>): Promise<User> {
     try {
-      const users = this.getUsersFromStorage();
+      console.log('📤 Sending register request to backend:', userData.email);
       
-      // Check if user already exists
-      if (users.find(u => u.email === userData.email)) {
-        throw new Error('User already exists');
+      const response = await apiClient.post('/auth/register', userData);
+      
+      if (response.data.success) {
+        console.log('✅ User created successfully:', response.data.user);
+        
+        // Save to localStorage for frontend state
+        const newUser = response.data.user;
+        const users = this.getUsersFromStorage();
+        users.push(newUser);
+        this.saveUsersToStorage(users);
+        this.saveCurrentUserToStorage(newUser);
+        
+        return newUser;
+      } else {
+        throw new Error(response.data.message || 'Failed to create user');
       }
-
-      const newUser: User = {
-        ...userData,
-        _id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      users.push(newUser);
-      this.saveUsersToStorage(users);
-
-      // Also save as current user
-      this.saveCurrentUserToStorage(newUser);
-
-      return newUser;
-    } catch (error) {
-      console.error('Error creating user:', error);
+    } catch (error: any) {
+      console.error('❌ Error creating user:', error.response?.data || error.message);
+      
+      // Check if it's a 409 Conflict (user already exists)
+      if (error.response?.status === 409) {
+        const errorData = error.response.data;
+        throw {
+          ...error,
+          response: {
+            data: {
+              message: errorData.message || 'هذا الحساب مسجل لدينا بالفعل',
+              redirectToLogin: true,
+              ...errorData
+            }
+          }
+        };
+      }
+      
       throw error;
     }
   }
