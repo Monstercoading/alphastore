@@ -560,6 +560,11 @@ app.get('/api/auth/me', async (req, res) => {
 const conversationsRouter = require('./routes/conversations');
 app.use('/api/conversations', conversationsRouter);
 
+// ========== DISCOUNT CODES API ==========
+
+const discountCodesRouter = require('./routes/discountCodes');
+app.use('/api/discount-codes', discountCodesRouter);
+
 // ========== ADMIN NOTIFICATIONS SSE ==========
 
 // SSE endpoint for real-time admin notifications
