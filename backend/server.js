@@ -586,6 +586,22 @@ app.get('/api/auth/me', async (req, res) => {
 // Make io available to routes
 app.set('io', io);
 
+// ========== ROOT ROUTE ==========
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'AlphaStore Backend API is running!',
+    status: 'Active',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      api: '/api',
+      auth: '/api/auth',
+      products: '/api/products',
+      orders: '/api/orders',
+      conversations: '/api/conversations'
+    }
+  });
+});
+
 // ========== CONVERSATIONS API ==========
 
 const conversationsRouter = require('./routes/conversations');
