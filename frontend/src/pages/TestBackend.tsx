@@ -11,7 +11,7 @@ const TestBackend: React.FC = () => {
     
     try {
       // Test root endpoint first
-      const rootResponse = await fetch('https://alphastore-6rvv.onrender.com/', {
+      const rootResponse = await fetch('https://alphastore-ap.onrender.com/', {
         method: 'GET',
         mode: 'cors',
       });
