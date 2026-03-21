@@ -5,10 +5,20 @@ const path = require('path');
 const dotenv = require('dotenv');
 const { google } = require('googleapis');
 const jwt = require('jsonwebtoken');
+const http = require('http');
+const socketIo = require('socket.io');
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 // MongoDB Atlas Connection String (MUST be set in .env)
@@ -573,6 +583,9 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// Make io available to routes
+app.set('io', io);
+
 // ========== CONVERSATIONS API ==========
 
 const conversationsRouter = require('./routes/conversations');
@@ -668,6 +681,68 @@ app.get('/api', (req, res) => {
   });
 });
 
+// ========== SOCKET.IO REAL-TIME CHAT ==========
+
+const connectedUsers = new Map();
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Join conversation room
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(conversationId);
+    console.log(`User ${socket.id} joined conversation ${conversationId}`);
+  });
+
+  // Leave conversation room
+  socket.on('leaveConversation', (conversationId) => {
+    socket.leave(conversationId);
+    console.log(`User ${socket.id} left conversation ${conversationId}`);
+  });
+
+  // Send message
+  socket.on('sendMessage', async (data) => {
+    try {
+      const { conversationId, message, senderType, senderId } = data;
+      
+      // Broadcast to conversation room
+      io.to(conversationId).emit('newMessage', {
+        conversationId,
+        message,
+        senderType,
+        senderId,
+        timestamp: new Date()
+      });
+
+      // Notify admin if customer sends message
+      if (senderType === 'customer') {
+        io.emit('newConversationMessage', {
+          conversationId,
+          message: message.content || 'صورة',
+          timestamp: new Date()
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message via socket:', error);
+    }
+  });
+
+  // Typing indicators
+  socket.on('typing', (data) => {
+    socket.to(data.conversationId).emit('userTyping', data);
+  });
+
+  socket.on('stopTyping', (data) => {
+    socket.to(data.conversationId).emit('userStopTyping', data);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    connectedUsers.delete(socket.id);
+  });
+});
+
 // ========== ERROR HANDLING ==========
 
 app.use((err, req, res, next) => {
@@ -676,7 +751,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 MongoDB Atlas: Connected`);
   console.log(`📊 API Endpoints:`);

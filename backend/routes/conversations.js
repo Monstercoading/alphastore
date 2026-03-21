@@ -241,6 +241,26 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
     }
 
     res.status(201).json(message);
+    
+    // Emit real-time message via Socket.io
+    const reqIo = req.app.get('io');
+    if (reqIo) {
+      reqIo.to(conversationId).emit('newMessage', {
+        conversationId,
+        message,
+        senderType,
+        timestamp: new Date()
+      });
+
+      // Notify admin if customer sends message
+      if (senderType === 'customer') {
+        reqIo.emit('newConversationMessage', {
+          conversationId,
+          message: message.content || 'صورة',
+          timestamp: new Date()
+        });
+      }
+    }
   } catch (error) {
     console.error('Error sending message:', error);
     res.status(500).json({ error: 'Failed to send message: ' + error.message });

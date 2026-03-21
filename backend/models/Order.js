@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
+const AutoIncrement = require('mongoose-sequence');
 
 const OrderSchema = new mongoose.Schema({
+  orderNumber: {
+    type: Number,
+    unique: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -31,5 +36,8 @@ const OrderSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Add auto-increment plugin
+OrderSchema.plugin(AutoIncrement, { inc_field: 'orderNumber', start_seq: 1 });
 
 module.exports = mongoose.models.Order || mongoose.model('Order', OrderSchema);

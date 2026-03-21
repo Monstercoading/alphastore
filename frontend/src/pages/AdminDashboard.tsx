@@ -8,6 +8,7 @@ import { playNotificationSound, playMessageSound } from '../utils/notificationSo
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { STATIC_PRODUCTS } from '../data/products-data';
 import { API_URL } from '../config/api';
+import { socketService } from '../services/socketService';
 
 interface Game {
   _id: string;
@@ -271,15 +272,26 @@ const AdminDashboard: React.FC = () => {
       console.log('Starting conversation polling...');
       loadConversations();
       
-      // Set up polling for new conversations every 3 seconds
+      // Connect to Socket.io for real-time updates
+      socketService.connect();
+      
+      // Listen for new conversation messages
+      socketService.onNewConversationMessage((data) => {
+        console.log('New conversation message received:', data);
+        loadConversations(); // Refresh conversations
+        playMessageSound();
+      });
+      
+      // Set up polling for new conversations every 10 seconds (backup)
       const pollInterval = setInterval(() => {
         console.log('Polling conversations...');
         loadConversations();
-      }, 3000);
+      }, 10000);
 
       return () => {
         console.log('Cleaning up conversation polling');
         clearInterval(pollInterval);
+        socketService.off('newConversationMessage');
       };
     }
   }, [state.isAuthenticated, activeTab]);
@@ -1105,6 +1117,11 @@ const AdminDashboard: React.FC = () => {
                         <tr key={order._id} className="hover:bg-[#0a0a0a]">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-white">
+                              #{order.orderNumber || order._id.substring(0, 8)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-white">
                               {order.user.firstName} {order.user.lastName}
                             </div>
                             <div className="text-xs text-gray-400">{order.user.email}</div>
@@ -1132,7 +1149,13 @@ const AdminDashboard: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                            {new Date(order.createdAt).toLocaleDateString('ar-SA')}
+                            {new Date(order.createdAt).toLocaleDateString('ar-SA', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             {order.status === 'pending' && (
@@ -1190,6 +1213,9 @@ const AdminDashboard: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-[#0a0a0a]">
                       <tr>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          رقم الطلب
+                        </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                           الزبون
                         </th>

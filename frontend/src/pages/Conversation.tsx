@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { conversationAPI, ConversationWithMessages, Message } from '../services/conversationAPI';
-import { playMessageSound } from '../utils/notificationSound';
+import { socketService } from '../services/socketService';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 const Conversation: React.FC = () => {
@@ -15,41 +15,62 @@ const Conversation: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const isCurrentUser = (senderType: string) => {
+    if (state.user?.role === 'admin') {
+      return senderType === 'admin';
+    } else {
+      return senderType === 'customer';
+    }
+  };
+
   useEffect(() => {
     if (id) {
       loadConversation();
+      // Connect to Socket.io
+      socketService.connect();
+      socketService.joinConversation(id);
+      
+      // Listen for new messages
+      socketService.onNewMessage((data) => {
+        if (data.conversationId === id) {
+          setMessages(prev => [...prev, data.message]);
+          scrollToBottom();
+        }
+      });
+
+      // Listen for typing indicators
+      socketService.onUserTyping((data) => {
+        if (data.conversationId === id) {
+          setTypingUser(data.user?.firstName || 'شخص ما');
+        }
+      });
+
+      socketService.onUserStopTyping(() => {
+        setTypingUser(null);
+      });
+
+      return () => {
+        socketService.leaveConversation(id);
+        socketService.off('newMessage');
+        socketService.off('userTyping');
+        socketService.off('userStopTyping');
+      };
     }
   }, [id]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    // Set up SSE for real-time messages
-    if (id && conversationData) {
-      eventSourceRef.current = conversationAPI.connectToMessages((data) => {
-        if (data.conversationId === id) {
-          playMessageSound();
-          loadMessages(); // Reload messages to get the latest
-        }
-      });
-    }
-
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, [id, conversationData]);
 
   const loadConversation = async () => {
     if (!id) return;
@@ -82,23 +103,21 @@ const Conversation: React.FC = () => {
     }
   };
 
-  const loadMessages = async () => {
-    if (!id) return;
-    
-    try {
-      const data = await conversationAPI.getConversation(id);
-      setMessages(data.messages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
-
   const sendMessage = async () => {
     if (!newMessage.trim() || !id) return;
 
     try {
       setSending(true);
       const message = await conversationAPI.sendMessage(id, newMessage.trim());
+      
+      // Send via Socket.io for real-time update
+      socketService.sendMessage({
+        conversationId: id,
+        message,
+        senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
+        senderId: state.user?.id || 'guest'
+      });
+      
       setMessages(prev => [...prev, message]);
       setNewMessage('');
       scrollToBottom();
@@ -116,6 +135,15 @@ const Conversation: React.FC = () => {
     try {
       setUploading(true);
       const message = await conversationAPI.sendImageMessage(id, file);
+      
+      // Send via Socket.io for real-time update
+      socketService.sendMessage({
+        conversationId: id,
+        message,
+        senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
+        senderId: state.user?.id || 'guest'
+      });
+      
       setMessages(prev => [...prev, message]);
       scrollToBottom();
       showSuccessToast('تم إرسال الصورة');
@@ -127,161 +155,172 @@ const Conversation: React.FC = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showErrorToast('حجم الصورة يجب أن يكون أقل من 5 ميجابايت');
-        return;
-      }
-      sendImage(file);
+  const closeConversation = async () => {
+    if (!id) return;
+    
+    try {
+      await conversationAPI.closeConversation(id);
+      showSuccessToast('تم إغلاق المحادثة');
+      navigate(state.user?.role === 'admin' ? '/admin' : '/cart');
+    } catch (error) {
+      console.error('Error closing conversation:', error);
+      showErrorToast('فشل إغلاق المحادثة');
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  const handleTyping = () => {
+    if (!isTyping) {
+      setIsTyping(true);
+      socketService.emitTyping(id!, state.user);
     }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set new timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      socketService.emitStopTyping(id!, state.user);
+    }, 1000);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
-        <div className="text-white">جاري التحميل...</div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">جاري التحميل...</div>
       </div>
     );
   }
 
   if (!conversationData) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
-        <div className="text-white">المحادثة غير موجودة</div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">المحادثة غير موجودة</div>
       </div>
     );
   }
 
-  const { conversation } = conversationData;
-  const isAdmin = state.user?.role === 'admin';
-
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
+    <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
-      <div className="bg-[#1a1d24] border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-gray-800 border-b border-gray-700 p-4">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(isAdmin ? '/admin/messages' : '/cart')}
-              className="text-gray-400 hover:text-white transition-colors"
+              onClick={() => navigate(state.user?.role === 'admin' ? '/admin' : '/cart')}
+              className="text-gray-400 hover:text-white"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              ← رجوع
             </button>
             <div>
-              <h2 className="text-lg font-semibold text-white">
-                {isAdmin ? conversation.customerName : 'الدعم الفني'}
+              <h2 className="text-white font-semibold">
+                {state.user?.role === 'admin' 
+                  ? conversationData.customerName || 'زائر'
+                  : 'خدمة العملاء'
+                }
               </h2>
-              <p className="text-sm text-gray-400">
-                {isAdmin ? conversation.customerEmail : `طلب #${conversation.orderId._id}`}
-              </p>
+              {state.user?.role === 'admin' && (
+                <p className="text-gray-400 text-sm">{conversationData.customerEmail}</p>
+              )}
             </div>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => conversationAPI.closeConversation(conversation._id)}
-              className="text-red-400 hover:text-red-300 text-sm"
-            >
-              إغلاق المحادثة
-            </button>
-          )}
+          <button
+            onClick={closeConversation}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+          >
+            إغلاق المحادثة
+          </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        {messages.map((message) => {
-          const isFromMe = 
-            (isAdmin && message.senderType === 'admin') ||
-            (!isAdmin && message.senderType === 'customer');
-
-          return (
+      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`mb-4 flex ${isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'}`}
+          >
             <div
-              key={message._id}
-              className={`flex ${isFromMe ? 'justify-start' : 'justify-end'}`}
+              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                isCurrentUser(message.senderType)
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-200'
+              }`}
             >
-              <div
-                className={`max-w-md px-4 py-3 rounded-2xl ${
-                  isFromMe
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-white'
-                }`}
-              >
-                {message.imageUrl ? (
-                  <div>
-                    <img
-                      src={message.imageUrl}
-                      alt="صورة"
-                      className="rounded-lg mb-2 max-w-full"
-                      style={{ maxHeight: '300px' }}
-                    />
-                    {message.content && <p>{message.content}</p>}
-                  </div>
-                ) : (
-                  <p>{message.content}</p>
-                )}
-                <p className="text-xs opacity-70 mt-1">
-                  {new Date(message.createdAt).toLocaleTimeString('ar-SA', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
+              {message.imageUrl ? (
+                <img
+                  src={message.imageUrl}
+                  alt="صورة"
+                  className="rounded-lg max-w-full h-auto"
+                />
+              ) : (
+                <p>{message.content}</p>
+              )}
+              <p className={`text-xs mt-1 ${
+                isCurrentUser(message.senderType) ? 'text-blue-200' : 'text-gray-400'
+              }`}>
+                {new Date(message.createdAt).toLocaleTimeString('ar-SA', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
             </div>
-          );
-        })}
+          </div>
+        ))}
+        
+        {/* Typing indicator */}
+        {typingUser && (
+          <div className="flex justify-start mb-4">
+            <div className="bg-gray-700 text-gray-200 px-4 py-2 rounded-lg">
+              <p className="text-sm italic">{typingUser} يكتب...</p>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="bg-[#1a1d24] border-t border-gray-800 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </button>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="اكتب رسالتك..."
-            className="flex-1 bg-[#0a0a0a] text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-            disabled={sending || uploading}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={sending || uploading || !newMessage.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-3 rounded-lg transition-colors"
-          >
-            {sending ? 'جاري الإرسال...' : 'إرسال'}
-          </button>
+      <div className="bg-gray-800 border-t border-gray-700 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping();
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder="اكتب رسالتك..."
+              className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={sending || uploading}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={(e) => e.target.files?.[0] && sendImage(e.target.files[0])}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              📷
+            </button>
+            <button
+              onClick={sendMessage}
+              disabled={sending || uploading || !newMessage.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+            >
+              {sending ? 'جاري الإرسال...' : 'إرسال'}
+            </button>
+          </div>
         </div>
-        {uploading && (
-          <p className="text-sm text-gray-400 mt-2">جاري رفع الصورة...</p>
-        )}
       </div>
     </div>
   );
