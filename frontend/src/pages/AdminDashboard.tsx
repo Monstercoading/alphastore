@@ -263,16 +263,10 @@ const AdminDashboard: React.FC = () => {
     }
   }, [state.isAuthenticated]);
 
-  // Load conversations when messages tab is active
+  // Load conversations for admin users
   useEffect(() => {
-    console.log('Messages tab effect:', {
-      isAuthenticated: state.isAuthenticated,
-      userRole: state.user?.role,
-      activeTab
-    });
-    
-    if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
-      console.log('Starting conversation polling...');
+    if (state.isAuthenticated && state.user?.role === 'admin') {
+      console.log('Loading conversations for admin...');
       loadConversations();
       
       // Connect to Socket.io for real-time updates
@@ -315,7 +309,7 @@ const AdminDashboard: React.FC = () => {
         socketService.off('newConversationMessage');
       };
     }
-  }, [state.isAuthenticated, activeTab]);
+  }, [state.isAuthenticated]);
 
   const loadDiscountCodes = async () => {
     try {
