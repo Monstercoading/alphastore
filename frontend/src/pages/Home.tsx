@@ -36,11 +36,29 @@ const Home: React.FC = () => {
   const { state } = useAuth();
 
   const searchQuery = searchParams.get('search') || '';
+  const platformFromUrl = searchParams.get('platform') || '';
   const platforms = ['PC', 'Xbox', 'PlayStation', 'Mobile'];
+
+  // Sync selectedPlatform with URL params
+  useEffect(() => {
+    setSelectedPlatform(platformFromUrl);
+  }, [platformFromUrl]);
 
   useEffect(() => {
     fetchGames();
     loadFavorites();
+    
+    // Reload favorites when user changes
+    const interval = setInterval(() => {
+      const favoritesKey = getFavoritesKey();
+      const savedFavorites = localStorage.getItem(favoritesKey);
+      if (savedFavorites) {
+        const parsed = JSON.parse(savedFavorites);
+        if (JSON.stringify(parsed) !== JSON.stringify(favorites)) {
+          setFavorites(parsed);
+        }
+      }
+    }, 1000);
     
     // Listen for storage changes from admin panel
     const handleStorageChange = (e: StorageEvent) => {
@@ -50,13 +68,24 @@ const Home: React.FC = () => {
     };
     
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [state.user?.email]);
+
+  const getFavoritesKey = () => {
+    const userEmail = state.user?.email || 'guest';
+    return `favoriteGames_${userEmail}`;
+  };
 
   const loadFavorites = () => {
-    const savedFavorites = localStorage.getItem('favoriteGames');
+    const favoritesKey = getFavoritesKey();
+    const savedFavorites = localStorage.getItem(favoritesKey);
     if (savedFavorites) {
       setFavorites(JSON.parse(savedFavorites));
+    } else {
+      setFavorites([]);
     }
   };
 
@@ -92,7 +121,8 @@ const Home: React.FC = () => {
       showSuccessToast('تم إضافة اللعبة للمفضلة');
     }
     setFavorites(newFavorites);
-    localStorage.setItem('favoriteGames', JSON.stringify(newFavorites));
+    const favoritesKey = getFavoritesKey();
+    localStorage.setItem(favoritesKey, JSON.stringify(newFavorites));
   };
 
   // Live filtering based on search and platform

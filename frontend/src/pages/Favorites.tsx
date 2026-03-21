@@ -50,6 +50,11 @@ const Favorites: React.FC = () => {
     );
   }
 
+  const getFavoritesKey = () => {
+    const userEmail = state.user?.email || 'guest';
+    return `favoriteGames_${userEmail}`;
+  };
+
   const loadFavorites = async () => {
     try {
       setLoading(true);
@@ -60,8 +65,9 @@ const Favorites: React.FC = () => {
         const games = await response.json();
         setAllGames(games);
         
-        // Get favorite IDs from localStorage
-        const savedFavorites = localStorage.getItem('favoriteGames');
+        // Get favorite IDs from localStorage - per user
+        const favoritesKey = getFavoritesKey();
+        const savedFavorites = localStorage.getItem(favoritesKey);
         if (savedFavorites) {
           const favoriteIds = JSON.parse(savedFavorites);
           const favoriteGames = games.filter((game: Game) => favoriteIds.includes(game._id));
@@ -72,7 +78,8 @@ const Favorites: React.FC = () => {
         const savedGames = JSON.parse(localStorage.getItem('alpha_products') || '[]');
         setAllGames(savedGames);
         
-        const savedFavorites = localStorage.getItem('favoriteGames');
+        const favoritesKey = getFavoritesKey();
+        const savedFavorites = localStorage.getItem(favoritesKey);
         if (savedFavorites) {
           const favoriteIds = JSON.parse(savedFavorites);
           const games = savedGames.filter((game: Game) => favoriteIds.includes(game._id));
@@ -83,7 +90,8 @@ const Favorites: React.FC = () => {
       console.error('Error loading favorites:', error);
       // Fallback to localStorage
       const savedGames = JSON.parse(localStorage.getItem('alpha_products') || '[]');
-      const savedFavorites = localStorage.getItem('favoriteGames');
+      const favoritesKey = getFavoritesKey();
+      const savedFavorites = localStorage.getItem(favoritesKey);
       if (savedFavorites) {
         const favoriteIds = JSON.parse(savedFavorites);
         const games = savedGames.filter((game: Game) => favoriteIds.includes(game._id));
@@ -95,16 +103,16 @@ const Favorites: React.FC = () => {
   };
 
   const removeFromFavorites = (gameId: string) => {
-    const savedFavorites = localStorage.getItem('favoriteGames');
+    const favoritesKey = getFavoritesKey();
+    const savedFavorites = localStorage.getItem(favoritesKey);
     if (savedFavorites) {
       const favoriteIds = JSON.parse(savedFavorites);
       const newFavorites = favoriteIds.filter((id: string) => id !== gameId);
-      localStorage.setItem('favoriteGames', JSON.stringify(newFavorites));
+      localStorage.setItem(favoritesKey, JSON.stringify(newFavorites));
       
       const games = allGames.filter((game: Game) => newFavorites.includes(game._id));
       setFavorites(games);
-      
-      showNotification('تم إزالة اللعبة من المفضلة', 'success');
+      showNotification('تم إزالة اللعبة من المفضلة', 'info');
     }
   };
 

@@ -23,11 +23,17 @@ const Home: React.FC = () => {
   // Get search query from URL
   const queryFromUrl = searchParams.get('query') || '';
 
-  // Load favorites from localStorage
+  const getFavoritesKey = () => {
+    const userEmail = state.user?.email || 'guest';
+    return `favoriteGames_${userEmail}`;
+  };
+
+  // Load favorites from localStorage - per user
   useEffect(() => {
-    const savedFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    setFavorites(savedFavorites.map((game: Game) => game._id));
-  }, []);
+    const favoritesKey = getFavoritesKey();
+    const savedFavorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
+    setFavorites(savedFavorites);
+  }, [state.user?.email]);
 
   const addToCart = (game: Game) => {
     if (!state.isAuthenticated) {
@@ -69,7 +75,8 @@ const Home: React.FC = () => {
     }
     
     setFavorites(favIds);
-    localStorage.setItem('favorites', JSON.stringify(favIds.map(id => games.find(g => g._id === id)).filter(Boolean)));
+    const favoritesKey = getFavoritesKey();
+    localStorage.setItem(favoritesKey, JSON.stringify(favIds));
   };
 
   const loadGames = async () => {
