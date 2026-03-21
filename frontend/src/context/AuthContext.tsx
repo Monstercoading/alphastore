@@ -7,6 +7,7 @@ import { GOOGLE_AUTH_CONFIG, initiateGoogleSignIn } from '../config/googleAuth';
 
 interface User {
   _id: string;
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -175,6 +176,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (email === 'admin@gmail.com' && password === '3621447a') {
         const adminUser = {
           _id: 'admin-001',
+          id: 'admin-001',
           email: 'admin@gmail.com',
           firstName: 'Admin',
           lastName: 'User',
