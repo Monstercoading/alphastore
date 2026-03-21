@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NavigationProvider } from './context/NavigationContext';
 import Navbar from './components/Navbar';
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Notifications />
+        <Toaster position="top-center" />
       </div>
     </>
   );

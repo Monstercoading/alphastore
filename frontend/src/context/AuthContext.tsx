@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { useAppNavigation } from './NavigationContext';
-import { showNotification } from '../assets/notifications';
-import { formatWelcomeMessage } from '../utils/nameFormatter';
+import { showSuccessToast, showErrorToast, showToastWithAction, formatWelcomeMessage } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import { userAPI } from '../services/userAPI';
 import { GOOGLE_AUTH_CONFIG, initiateGoogleSignIn } from '../config/googleAuth';
@@ -190,7 +189,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           payload: { user: adminUser, token }
         });
         
-        showNotification('تم تسجيل دخول الأدمن بنجاح!', 'success');
+        showSuccessToast('تم تسجيل دخول الأدمن بنجاح!');
         navigateWithDelay('/admin', 1500);
         return;
       }
@@ -215,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           payload: { user: userToUse, token }
         });
         
-        showNotification(formatWelcomeMessage(userToUse.firstName, userToUse.lastName), 'success');
+        showSuccessToast(formatWelcomeMessage(userToUse.firstName, userToUse.lastName));
         // الانتقال للصفحة الرئيسية مع تأخير و loading
         navigateWithDelay('/', 2500);
       } else {
@@ -262,11 +261,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       // Show success toast for account creation
-      showNotification('تم إنشاء الحساب بنجاح!', 'success');
+      showSuccessToast('تم إنشاء الحساب بنجاح!');
       
       // Then show welcome message
       setTimeout(() => {
-        showNotification(formatWelcomeMessage(newUser.firstName, newUser.lastName), 'success');
+        showSuccessToast(formatWelcomeMessage(newUser.firstName, newUser.lastName));
       }, 1500);
       
       navigateWithDelay('/', 2500);
@@ -275,15 +274,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Check if error indicates user already exists
       if (error.response?.data?.redirectToLogin || errorMessage.includes('مستخدمة')) {
-        showNotification(
-          'هذه المعلومات مستخدمة بالفعل. سيتم توجيهك للتسجيل الدخول...',
-          'error',
-          5000
+        showToastWithAction(
+          'هذا الحساب مسجل لدينا بالفعل، يرجى تسجيل الدخول',
+          'تسجيل الدخول',
+          () => navigate('/login')
         );
-        // Redirect to login after delay
-        setTimeout(() => navigate('/login'), 3000);
       } else {
-        showNotification(errorMessage, 'error');
+        showErrorToast(errorMessage);
       }
       
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
@@ -311,7 +308,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         payload: { user: userToUse, token }
       });
 
-      showNotification(formatWelcomeMessage(userToUse.firstName, userToUse.lastName), 'success');
+      showSuccessToast(formatWelcomeMessage(userToUse.firstName, userToUse.lastName));
       navigateWithDelay('/', 2500);
     } catch (error: any) {
       const errorMessage = error.message || 'فشل تسجيل الدخول عبر Google';
@@ -325,7 +322,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('users');
-    showNotification('تم تسجيل الخروج بنجاح', 'success');
+    showSuccessToast('تم تسجيل الخروج بنجاح');
     // الانتقال للصفحة الرئيسية مع تأخير و loading
     redirectWithDelay('/', 2500);
   };

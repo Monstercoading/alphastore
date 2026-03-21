@@ -82,6 +82,146 @@ app.get('/api/test', (req, res) => {
   res.json({ success: true, message: 'API is working!' });
 });
 
+// Register endpoint with duplicate check
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+    
+    // Validation
+    if (!email || !firstName || !lastName) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'جميع الحقول مطلوبة',
+        error: 'All fields are required'
+      });
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'صيغة البريد الإلكتروني غير صحيحة',
+        error: 'Invalid email format'
+      });
+    }
+    
+    // Check if user exists - Return 409 Conflict
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ 
+        success: false,
+        error: 'User already exists',
+        message: 'هذا الحساب مسجل لدينا بالفعل، يرجى تسجيل الدخول',
+        redirectToLogin: true 
+      });
+    }
+    
+    // Create new user
+    const newUser = new User({
+      email,
+      password: password || '',
+      firstName,
+      lastName,
+      role: 'user'
+    });
+    
+    await newUser.save();
+    
+    // Create JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const token = jwt.sign(
+      { 
+        userId: newUser._id,
+        email: newUser.email,
+        name: newUser.firstName + ' ' + newUser.lastName
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    const userWithoutPassword = {
+      _id: newUser._id,
+      email: newUser.email,
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
+      role: newUser.role
+    };
+    
+    res.status(201).json({ 
+      success: true,
+      message: 'تم إنشاء الحساب بنجاح!',
+      user: userWithoutPassword, 
+      token: token
+    });
+  } catch (err) {
+    console.error('❌ Register Error:', err.message);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to register user', 
+      message: err.message 
+    });
+  }
+});
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validation
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'البريد الإلكتروني مطلوب',
+        error: 'Email is required'
+      });
+    }
+    
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+        error: 'Invalid credentials'
+      });
+    }
+    
+    // Create JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        name: user.firstName + ' ' + user.lastName
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'تم تسجيل الدخول بنجاح!',
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      },
+      token: token
+    });
+  } catch (err) {
+    console.error('❌ Login Error:', err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to login',
+      message: err.message
+    });
+  }
+});
+
 // Real Google OAuth endpoint
 app.post('/api/auth/google', async (req, res) => {
   try {
