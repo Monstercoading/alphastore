@@ -277,15 +277,47 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadConversations = async () => {
+    try {
+      const convs = await conversationAPI.getAdminConversations();
+      setConversations(convs);
+      // Calculate unread messages
+      const unread = convs.reduce((total: number, conv: any) => total + (conv.unreadByAdmin || 0), 0);
+      setUnreadMessages(unread);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+  };
+
   const handleSaveDiscount = async () => {
     try {
+      // Validation
+      if (!discountForm.code.trim()) {
+        showErrorToast('يرجى إدخال كود الخصم');
+        return;
+      }
+      if (!discountForm.description.trim()) {
+        showErrorToast('يرجى إدخال وصف الخصم');
+        return;
+      }
+      if (!discountForm.discountValue || parseFloat(discountForm.discountValue) <= 0) {
+        showErrorToast('يرجى إدخال قيمة خصم صحيحة');
+        return;
+      }
+
       const discountData = {
-        ...discountForm,
+        code: discountForm.code.trim().toUpperCase(),
+        description: discountForm.description.trim(),
+        discountType: discountForm.discountType,
         discountValue: parseFloat(discountForm.discountValue),
-        minimumAmount: discountForm.minimumAmount ? parseFloat(discountForm.minimumAmount) : undefined,
+        minimumAmount: discountForm.minimumAmount ? parseFloat(discountForm.minimumAmount) : 0,
         maxDiscountAmount: discountForm.maxDiscountAmount ? parseFloat(discountForm.maxDiscountAmount) : undefined,
+        applicableProducts: discountForm.applicableProducts.length > 0 ? discountForm.applicableProducts : undefined,
+        applicableCategories: discountForm.applicableCategories.length > 0 ? discountForm.applicableCategories : undefined,
         usageLimit: discountForm.usageLimit ? parseInt(discountForm.usageLimit) : undefined,
-        userUsageLimit: parseInt(discountForm.userUsageLimit)
+        userUsageLimit: parseInt(discountForm.userUsageLimit) || 1,
+        startDate: discountForm.startDate,
+        endDate: discountForm.endDate
       };
 
       if (editingDiscount) {
@@ -300,9 +332,10 @@ const AdminDashboard: React.FC = () => {
       setEditingDiscount(null);
       resetDiscountForm();
       loadDiscountCodes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving discount code:', error);
-      showErrorToast('فشل حفظ كود الخصم');
+      const errorMessage = error.response?.data?.error || error.message || 'فشل حفظ كود الخصم';
+      showErrorToast(errorMessage);
     }
   };
 
@@ -576,89 +609,6 @@ const AdminDashboard: React.FC = () => {
   const calculateDiscountedPrice = (price: number, discount?: number) => {
     if (!discount) return price;
     return price - (price * discount / 100);
-  };
-
-  // Export orders to JSON file using backend API
-  const exportOrders = async () => {
-    try {
-      const response = await fetch(`${API_URL}/orders/export`);
-      if (!response.ok) {
-        throw new Error('Failed to export orders');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `orders-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      alert('تم تصدير الطلبات بنجاح!');
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('فشل تصدير الطلبات');
-    }
-  };
-
-  // Import orders from JSON file using backend API
-  const importOrders = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const fileContent = e.target?.result as string;
-        let importedData;
-        
-        // Try to parse as direct orders array first
-        try {
-          importedData = JSON.parse(fileContent);
-        } catch {
-          // If that fails, try to extract from export format
-          const parsed = JSON.parse(fileContent);
-          importedData = parsed.orders || parsed;
-        }
-        
-        if (!Array.isArray(importedData)) {
-          alert('الملف غير صالح - يجب أن يحتوي على مصفوفة من الطلبات');
-          return;
-        }
-        
-        // Send to backend API
-        const response = await fetch('http://192.168.1.52:5000/api/orders/import', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ orders: importedData }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to import orders');
-        }
-        
-        const result = await response.json();
-        alert(`تم استيراد ${result.imported} طلب بنجاح! المجموع الكلي: ${result.total}`);
-        
-        // Refresh orders list
-        const updatedOrders = await fetch('http://192.168.1.52:5000/api/orders');
-        if (updatedOrders.ok) {
-          const ordersData = await updatedOrders.json();
-          setOrders(ordersData);
-          localStorage.setItem('alpha_orders', JSON.stringify(ordersData));
-        }
-        
-      } catch (error) {
-        console.error('Import error:', error);
-        alert('خطأ في استيراد الملف');
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = ''; // Reset input
   };
 
   if (!state.isAuthenticated || state.user?.role !== 'admin') {
@@ -1053,29 +1003,7 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">إدارة الطلبات</h2>
-                <div className="flex gap-3">
-                  <button
-                    onClick={exportOrders}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    تصدير الطلبات
-                  </button>
-                  <label className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    استيراد طلبات
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={importOrders}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
+                {/* Export/Import removed as requested */}
               </div>
               
               {orders.length === 0 ? (
@@ -1168,6 +1096,111 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* Messages Tab */}
+          {activeTab === 'messages' && (
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">رسائل الزبائن</h2>
+                <button
+                  onClick={loadConversations}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  تحديث
+                </button>
+              </div>
+
+              {conversations.length === 0 ? (
+                <div className="text-center py-12 bg-[#1a1d24] rounded-xl">
+                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-white mb-2">لا يوجد طلب دعم فني</h3>
+                  <p className="text-gray-400">عندما يطلب أحد الزبائن الدعم الفني، ستظهر المحادثات هنا</p>
+                </div>
+              ) : (
+                <div className="bg-[#1a1d24] rounded-xl overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-[#0a0a0a]">
+                      <tr>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          الزبون
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          الطلب
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          الحالة
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          آخر رسالة
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          الإجراءات
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {conversations.map((conversation) => (
+                        <tr key={conversation._id} className="hover:bg-[#0a0a0a]">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-white">{conversation.customerName}</div>
+                            <div className="text-xs text-gray-400">{conversation.customerEmail}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-300">
+                              {(() => {
+                                const orderId = conversation.orderId as any;
+                                let orderIdStr = '';
+                                if (typeof orderId === 'string') {
+                                  orderIdStr = orderId;
+                                } else if (orderId && typeof orderId === 'object') {
+                                  orderIdStr = orderId._id || orderId.toString();
+                                }
+                                return `طلب #${orderIdStr.slice(-6) || '---'}`;
+                              })()}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              conversation.status === 'open' 
+                                ? 'bg-green-900/30 text-green-400' 
+                                : 'bg-gray-700 text-gray-400'
+                            }`}>
+                              {conversation.status === 'open' ? 'مفتوحة' : 'مغلقة'}
+                            </span>
+                            {conversation.unreadByAdmin > 0 && (
+                              <span className="mr-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                                {conversation.unreadByAdmin} جديد
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-400">
+                              {conversation.lastMessage 
+                                ? new Date(conversation.lastMessage).toLocaleDateString('ar-SA')
+                                : 'لا توجد رسائل'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={() => navigate(`/admin/conversation/${conversation._id}`)}
+                              className="text-blue-400 hover:text-blue-300"
+                            >
+                              فتح المحادثة
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Discount Codes Tab */}
           {activeTab === 'discounts' && (
             <div className="p-6">
@@ -1191,25 +1224,40 @@ const AdminDashboard: React.FC = () => {
               {/* Discount Form Modal */}
               {showDiscountForm && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-[#1a1d24] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <div className="bg-[#1a1d24] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                     <h3 className="text-lg font-semibold text-white mb-4">
                       {editingDiscount ? 'تعديل كود الخصم' : 'إضافة كود خصم جديد'}
                     </h3>
                     
                     <div className="space-y-4">
+                      {/* كود الخصم */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">كود الخصم *</label>
+                        <input
+                          type="text"
+                          value={discountForm.code}
+                          onChange={(e) => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
+                          className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          placeholder="مثال: SALE2024"
+                        />
+                      </div>
+
+                      {/* الوصف */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">الوصف *</label>
+                        <input
+                          type="text"
+                          value={discountForm.description}
+                          onChange={(e) => setDiscountForm({...discountForm, description: e.target.value})}
+                          className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          placeholder="خصم خاص على جميع المنتجات"
+                        />
+                      </div>
+
+                      {/* نوع الخصم وقيمته */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">كود الخصم</label>
-                          <input
-                            type="text"
-                            value={discountForm.code}
-                            onChange={(e) => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
-                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                            placeholder="SALE2024"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">نوع الخصم</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">نوع الخصم *</label>
                           <select
                             value={discountForm.discountType}
                             onChange={(e) => setDiscountForm({...discountForm, discountType: e.target.value as 'percentage' | 'fixed'})}
@@ -1219,55 +1267,36 @@ const AdminDashboard: React.FC = () => {
                             <option value="fixed">مبلغ ثابت ($)</option>
                           </select>
                         </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">الوصف</label>
-                        <input
-                          type="text"
-                          value={discountForm.description}
-                          onChange={(e) => setDiscountForm({...discountForm, description: e.target.value})}
-                          className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                          placeholder="خصم خاص للمنتجات المحددة"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">قيمة الخصم</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">قيمة الخصم *</label>
                           <input
                             type="number"
                             value={discountForm.discountValue}
                             onChange={(e) => setDiscountForm({...discountForm, discountValue: e.target.value})}
                             className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                            placeholder={discountForm.discountType === 'percentage' ? '10' : '5'}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">الحد الأدنى للشراء ($)</label>
-                          <input
-                            type="number"
-                            value={discountForm.minimumAmount}
-                            onChange={(e) => setDiscountForm({...discountForm, minimumAmount: e.target.value})}
-                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">أقصى خصم ($)</label>
-                          <input
-                            type="number"
-                            value={discountForm.maxDiscountAmount}
-                            onChange={(e) => setDiscountForm({...discountForm, maxDiscountAmount: e.target.value})}
-                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                            placeholder="اختياري"
+                            placeholder={discountForm.discountType === 'percentage' ? 'مثال: 10' : 'مثال: 5'}
+                            min="0"
                           />
                         </div>
                       </div>
 
+                      {/* الحد الأدنى للشراء */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">الحد الأدنى للشراء ($) <span className="text-gray-500 text-xs">(اختياري)</span></label>
+                        <input
+                          type="number"
+                          value={discountForm.minimumAmount}
+                          onChange={(e) => setDiscountForm({...discountForm, minimumAmount: e.target.value})}
+                          className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          placeholder="0"
+                          min="0"
+                        />
+                      </div>
+
+                      {/* تواريخ الصلاحية */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ البدء</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ البدء *</label>
                           <input
                             type="date"
                             value={discountForm.startDate}
@@ -1276,7 +1305,7 @@ const AdminDashboard: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ الانتهاء</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ الانتهاء *</label>
                           <input
                             type="date"
                             value={discountForm.endDate}
@@ -1286,25 +1315,28 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* عدد مرات الاستخدام */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">عدد مرات الاستخدام (الإجمالي)</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">عدد مرات الاستخدام <span className="text-gray-500 text-xs">(اختياري)</span></label>
                           <input
                             type="number"
                             value={discountForm.usageLimit}
                             onChange={(e) => setDiscountForm({...discountForm, usageLimit: e.target.value})}
                             className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
                             placeholder="غير محدود"
+                            min="1"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">عدد مرات الاستخدام (لكل مستخدم)</label>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">مرات الاستخدام لكل مستخدم</label>
                           <input
                             type="number"
                             value={discountForm.userUsageLimit}
                             onChange={(e) => setDiscountForm({...discountForm, userUsageLimit: e.target.value})}
                             className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
                             placeholder="1"
+                            min="1"
                           />
                         </div>
                       </div>
@@ -1322,7 +1354,7 @@ const AdminDashboard: React.FC = () => {
                       </button>
                       <button
                         onClick={handleSaveDiscount}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
                       >
                         {editingDiscount ? 'تحديث' : 'إضافة'}
                       </button>

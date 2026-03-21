@@ -185,9 +185,13 @@ const Navbar: React.FC = () => {
               {state.user.role === 'admin' && (
                 <Link
                   to="/admin"
-                  className="bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                  className="bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors relative"
                 >
                   لوحة التحكم
+                  {/* Notification badge - will be implemented with global state */}
+                  <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center hidden" id="admin-notification-badge">
+                    0
+                  </span>
                 </Link>
               )}
             </>

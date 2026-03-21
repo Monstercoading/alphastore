@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { conversationAPI } from '../services/conversationAPI';
-import { showSuccessToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import Loading from '../components/Loading';
 import { API_URL } from '../config/api';
@@ -31,6 +31,7 @@ interface Order {
 
 const Cart: React.FC = () => {
   const { state } = useAuth();
+  const navigate = useNavigate();
   const { navigateWithDelay, isLoading: navLoading } = useNavigationWithDelay();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +40,11 @@ const Cart: React.FC = () => {
     try {
       const conversation = await conversationAPI.createConversation(orderId);
       showSuccessToast('تم فتح المحادثة مع الدعم الفني');
-      navigateWithDelay(`/conversation/${conversation._id}`, 500);
-    } catch (error) {
+      navigate(`/conversation/${conversation._id}`);
+    } catch (error: any) {
       console.error('Error creating conversation:', error);
+      const errorMessage = error.response?.data?.error || 'فشل فتح المحادثة. يرجى المحاولة مرة أخرى.';
+      showErrorToast(errorMessage);
     }
   };
 
