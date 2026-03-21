@@ -139,42 +139,46 @@ router.post('/', async (req, res) => {
 });
 
 // Send message
-router.post('/:id/message', auth, upload.single('image'), async (req, res) => {
+router.post('/:id/message', upload.single('image'), async (req, res) => {
   try {
     const { content } = req.body;
     const conversationId = req.params.id;
 
+    console.log('Sending message to conversation:', conversationId);
+    console.log('Content:', content);
+    console.log('Has file:', !!req.file);
+
     // Get conversation
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
+      console.log('Conversation not found:', conversationId);
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    // Check authorization
-    const isCustomer = conversation.customerId.toString() === req.user.id;
-    const isAdmin = req.user.role === 'admin';
-
-    if (!isCustomer && !isAdmin) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
+    // For guest users, allow sending messages without authentication
+    const isGuest = !req.user;
+    const senderType = isGuest ? 'customer' : (req.user.role === 'admin' ? 'admin' : 'customer');
 
     // Create message
     const message = new Message({
       conversationId,
-      senderId: req.user.id,
-      senderType: isCustomer ? 'customer' : 'admin',
+      senderId: req.user?.id || null,
+      senderType,
       content: content || '',
       imageUrl: req.file ? `/uploads/conversations/${req.file.filename}` : null
     });
 
     await message.save();
+    console.log('Message saved:', message);
 
     // Update conversation
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage: content || (req.file ? 'صورة' : ''),
       lastMessageTime: new Date(),
-      [`unreadBy${isCustomer ? 'Admin' : 'Customer'}`]: conversation[`unreadBy${isCustomer ? 'Admin' : 'Customer'}`] + 1
+      unreadByAdmin: (conversation.unreadByAdmin || 0) + 1
     });
+
+    console.log('Conversation updated');
 
     // Notify via SSE (for real-time updates)
     const notification = {
@@ -190,7 +194,8 @@ router.post('/:id/message', auth, upload.single('image'), async (req, res) => {
     };
 
     // Send to admin notification listeners
-    if (isCustomer && global.adminNotificationListeners) {
+    if (global.adminNotificationListeners) {
+      console.log('Sending notification to admins');
       global.adminNotificationListeners.forEach(listener => {
         try {
           listener.res.write(`data: ${JSON.stringify(notification)}\n\n`);
@@ -203,7 +208,7 @@ router.post('/:id/message', auth, upload.single('image'), async (req, res) => {
     res.status(201).json(message);
   } catch (error) {
     console.error('Error sending message:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: 'Failed to send message: ' + error.message });
   }
 });
 
