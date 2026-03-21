@@ -75,6 +75,20 @@ export const dismissToast = (toastId: string) => {
   toast.dismiss(toastId);
 };
 
+// Info toast
+export const showInfoToast = (message: string) => {
+  toast(message, {
+    duration: 4000,
+    position: 'top-center',
+    style: {
+      background: '#3B82F6',
+      color: '#fff',
+      padding: '16px',
+      borderRadius: '8px',
+    },
+  });
+};
+
 // Welcome message formatter
 export const formatWelcomeMessage = (firstName: string, lastName: string) => {
   return `مرحباً ${firstName} ${lastName}! تم تسجيل الدخول بنجاح`;
