@@ -4,7 +4,7 @@ import { conversationAPI } from '../services/conversationAPI';
 import { socketService } from '../services/socketService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { showErrorToast, showSuccessToast } from '../utils/toastConfig';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 interface Message {
   _id: string;
