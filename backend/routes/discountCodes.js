@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const DiscountCode = require('../models/DiscountCode');
-const Product = require('../models/Product');
+const Game = require('../models/Game');
 const auth = require('../middleware/auth');
 
 // Get all discount codes (admin only)
@@ -87,9 +87,9 @@ router.post('/', auth, async (req, res) => {
 
     // Validate applicable products if provided
     if (applicableProducts && applicableProducts.length > 0) {
-      const products = await Product.find({ _id: { $in: applicableProducts } });
-      if (products.length !== applicableProducts.length) {
-        return res.status(400).json({ error: 'Some products not found' });
+      const games = await Game.find({ _id: { $in: applicableProducts } });
+      if (games.length !== applicableProducts.length) {
+        return res.status(400).json({ error: 'Some games not found' });
       }
     }
 
@@ -228,8 +228,8 @@ router.post('/validate', auth, async (req, res) => {
     // Get product category if not provided
     let category = productCategory;
     if (!category && productId) {
-      const product = await Product.findById(productId);
-      category = product?.category;
+      const game = await Game.findById(productId);
+      category = game?.category;
     }
 
     // Calculate discount
@@ -263,14 +263,14 @@ router.get('/products/available', auth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const products = await Product.find({ availability: 'available' })
+    const games = await Game.find({ availability: 'available' })
       .select('_id title price category platform')
       .sort({ title: 1 });
 
-    res.json(products);
+    res.json(games);
   } catch (error) {
-    console.error('Error fetching available products:', error);
-    res.status(500).json({ error: 'Failed to fetch products' });
+    console.error('Error fetching available games:', error);
+    res.status(500).json({ error: 'Failed to fetch games' });
   }
 });
 
