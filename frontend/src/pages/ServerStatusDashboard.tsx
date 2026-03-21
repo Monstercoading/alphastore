@@ -6,6 +6,7 @@ interface TestResult {
   name: string;
   status: 'pending' | 'success' | 'error';
   message: string;
+  path: string;
   details?: any;
   responseTime?: number;
 }
@@ -201,6 +202,7 @@ const ServerStatusDashboard: React.FC = () => {
             name: endpoint.name,
             status: 'success',
             message: `Success (${responseTime}ms)`,
+            path: endpoint.path,
             responseTime,
             details: data
           };
@@ -210,6 +212,7 @@ const ServerStatusDashboard: React.FC = () => {
             name: endpoint.name,
             status: 'success',
             message: `Success (${responseTime}ms) - Non-JSON response`,
+            path: endpoint.path,
             responseTime,
             details: text.substring(0, 200)
           };
@@ -220,6 +223,7 @@ const ServerStatusDashboard: React.FC = () => {
           name: endpoint.name,
           status: 'error',
           message: `HTTP ${response.status} (${responseTime}ms)`,
+          path: endpoint.path,
           responseTime,
           details: text.substring(0, 200)
         };
@@ -230,6 +234,7 @@ const ServerStatusDashboard: React.FC = () => {
         name: endpoint.name,
         status: 'error',
         message: `Connection failed (${responseTime}ms)`,
+        path: endpoint.path,
         responseTime,
         details: error.message
       };
