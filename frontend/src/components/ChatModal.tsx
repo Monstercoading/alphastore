@@ -7,18 +7,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { Conversation as APIConversation, Message as APIMessage } from '../services/conversationAPI';
 
-interface Message {
-  _id: string;
-  conversationId: string;
-  senderId?: string;
-  senderType: 'customer' | 'admin';
-  content?: string;
-  imageUrl?: string;
-  isRead: boolean;
-  read: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+type Message = APIMessage;
 
 interface Conversation {
   _id: string;
