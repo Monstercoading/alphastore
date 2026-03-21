@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toast';
+import { SocketService } from '../services/socketService';
 
 interface TestResult {
   name: string;
@@ -9,6 +10,13 @@ interface TestResult {
   path: string;
   details?: any;
   responseTime?: number;
+}
+
+interface SocketLog {
+  timestamp: string;
+  event: string;
+  data?: any;
+  type: 'connect' | 'disconnect' | 'message' | 'error' | 'typing' | 'join' | 'leave';
 }
 
 interface ServerStatus {
@@ -38,6 +46,9 @@ interface ServerStatus {
 const ServerStatusDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isRunning, setIsRunning] = useState(false);
+  const [socketLogs, setSocketLogs] = useState<SocketLog[]>([]);
+  const [isMonitoringSocket, setIsMonitoringSocket] = useState(false);
+  const [socketService] = useState(() => new SocketService());
   const [serverStatus, setServerStatus] = useState<ServerStatus>({
     backend: {
       url: 'https://alphastore-6rvv.onrender.com',
@@ -67,7 +78,83 @@ const ServerStatusDashboard: React.FC = () => {
     { name: 'Notifications API', path: '/api/admin/notifications' }
   ];
 
-  const testBackendConnection = async (): Promise<void> => {
+  const addSocketLog = (event: string, data?: any, type: SocketLog['type'] = 'message') => {
+    const newLog: SocketLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      event,
+      data,
+      type
+    };
+    setSocketLogs(prev => [newLog, ...prev].slice(0, 50)); // Keep last 50 logs
+  };
+
+  const startSocketMonitoring = () => {
+    if (isMonitoringSocket) return;
+    
+    setIsMonitoringSocket(true);
+    addSocketLog('Starting Socket.io monitoring...', null, 'connect');
+    
+    // Connect to socket
+    socketService.connect();
+    
+    // Monitor connection events
+    socketService.on('connect', () => {
+      addSocketLog('Connected to Socket.io server', { socketId: socketService.getSocketId() }, 'connect');
+    });
+    
+    socketService.on('disconnect', () => {
+      addSocketLog('Disconnected from Socket.io server', null, 'disconnect');
+    });
+    
+    socketService.on('connect_error', (error) => {
+      addSocketLog('Socket.io connection error', error, 'error');
+    });
+    
+    // Monitor message events
+    socketService.on('newMessage', (data) => {
+      addSocketLog('Received newMessage', data, 'message');
+    });
+    
+    socketService.on('receiveMessage', (data) => {
+      addSocketLog('Received receiveMessage', data, 'message');
+    });
+    
+    socketService.on('newConversationMessage', (data) => {
+      addSocketLog('Received newConversationMessage', data, 'message');
+    });
+    
+    socketService.on('conversationClosed', (data) => {
+      addSocketLog('Received conversationClosed', data, 'message');
+    });
+    
+    socketService.on('userTyping', (data) => {
+      addSocketLog('Received userTyping', data, 'typing');
+    });
+    
+    socketService.on('userStopTyping', (data) => {
+      addSocketLog('Received userStopTyping', data, 'typing');
+    });
+    
+    // Join a test conversation room
+    setTimeout(() => {
+      const testConversationId = 'test-conversation-monitoring';
+      socketService.joinConversation(testConversationId);
+      addSocketLog('Joined test conversation room', { conversationId: testConversationId }, 'join');
+    }, 1000);
+  };
+
+  const stopSocketMonitoring = () => {
+    if (!isMonitoringSocket) return;
+    
+    socketService.leaveConversation('test-conversation-monitoring');
+    socketService.disconnect();
+    setIsMonitoringSocket(false);
+    addSocketLog('Stopped Socket.io monitoring', null, 'disconnect');
+  };
+
+  const clearLogs = () => {
+    setSocketLogs([]);
+  };
     const startTime = Date.now();
     
     try {
@@ -454,6 +541,76 @@ const ServerStatusDashboard: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Socket.io Real-time Monitoring */}
+        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">🔌 Socket.io Real-time Monitoring</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={clearLogs}
+                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                🗑️ Clear Logs
+              </button>
+              <button
+                onClick={isMonitoringSocket ? stopSocketMonitoring : startSocketMonitoring}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isMonitoringSocket
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                {isMonitoringSocket ? '⏹️ Stop Monitoring' : '▶️ Start Monitoring'}
+              </button>
+            </div>
+          </div>
+          
+          <div className="mb-4">
+            <p className="text-sm text-gray-600">
+              Monitor real-time Socket.io events to debug message delivery issues.
+              {isMonitoringSocket && (
+                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  🔴 Monitoring Active
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Socket Logs */}
+          <div className="bg-gray-900 rounded-lg p-4 h-96 overflow-y-auto">
+            {socketLogs.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">
+                <p>No socket events logged yet.</p>
+                <p className="text-sm mt-2">Click "Start Monitoring" to begin.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {socketLogs.map((log, index) => (
+                  <div
+                    key={index}
+                    className={`text-sm font-mono p-2 rounded ${
+                      log.type === 'error' ? 'bg-red-900 text-red-200' :
+                      log.type === 'connect' ? 'bg-green-900 text-green-200' :
+                      log.type === 'disconnect' ? 'bg-yellow-900 text-yellow-200' :
+                      log.type === 'message' ? 'bg-blue-900 text-blue-200' :
+                      log.type === 'typing' ? 'bg-purple-900 text-purple-200' :
+                      'bg-gray-800 text-gray-200'
+                    }`}
+                  >
+                    <span className="text-gray-400">[{log.timestamp}]</span>
+                    <span className="ml-2">{log.event}</span>
+                    {log.data && (
+                      <pre className="mt-1 text-xs text-gray-300 overflow-x-auto">
+                        {JSON.stringify(log.data, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

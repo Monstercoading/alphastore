@@ -38,6 +38,10 @@ class SocketService {
     }
   }
 
+  getSocketId(): string | null {
+    return this.socket?.id || null;
+  }
+
   joinConversation(conversationId: string) {
     console.log('🏠 Joining conversation room:', conversationId);
     if (this.socket) {
