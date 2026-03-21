@@ -329,10 +329,17 @@ const AdminDashboard: React.FC = () => {
       
       // Handle 401 errors - token expired or invalid
       if (error.response?.status === 401) {
-        console.log('Token expired/invalid, logging out...');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        console.log('Token expired/invalid in loadConversations:', error.response.data);
+        console.log('Current token:', localStorage.getItem('token'));
+        console.log('Current user:', localStorage.getItem('user'));
+        
+        // Temporarily disable auto-logout to debug
+        // localStorage.removeItem('token');
+        // localStorage.removeItem('user');
+        // window.location.href = '/login';
+        
+        // Just show error message for now
+        showErrorToast('Token expired or invalid - please check console');
         return;
       }
       

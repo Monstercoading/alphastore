@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = function(req, res, next) {
+  console.log('Auth middleware called for:', req.method, req.path);
+  
   // Get token from Authorization header (Bearer) or x-auth-token
   let token = req.header('x-auth-token');
   
@@ -12,18 +14,27 @@ module.exports = function(req, res, next) {
     }
   }
 
+  console.log('Token found:', !!token);
+  if (token) {
+    console.log('Token length:', token.length);
+    console.log('Token starts with:', token.substring(0, 20) + '...');
+  }
+
   // Check if not token
   if (!token) {
+    console.log('No token provided');
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
 
   // Verify token
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    console.log('Token verified successfully for user:', decoded.user.email);
     req.user = decoded.user;
     next();
   } catch (err) {
     console.log('Token verification failed:', err.message);
+    console.log('Error name:', err.name);
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired, please login again' });
     } else if (err.name === 'JsonWebTokenError') {

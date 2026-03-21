@@ -23,10 +23,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log('401 error detected, logging out...');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      console.log('401 error detected:', error.response.data);
+      console.log('Current token:', localStorage.getItem('token'));
+      console.log('Current user:', localStorage.getItem('user'));
+      
+      // Temporarily disable auto-logout to debug
+      // localStorage.removeItem('token');
+      // localStorage.removeItem('user');
+      // window.location.href = '/login';
+      
+      // Just show error for now
+      console.error('401 Error - Token may be invalid or expired');
     }
     return Promise.reject(error);
   }
