@@ -84,6 +84,17 @@ class ConversationAPI {
     }
   }
 
+  // Get messages for a conversation
+  async getMessages(conversationId: string): Promise<Message[]> {
+    try {
+      const response = await api.get(`/conversations/${conversationId}/messages`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
+  }
+
   // Get single conversation with messages
   async getConversation(id: string): Promise<ConversationWithMessages> {
     try {

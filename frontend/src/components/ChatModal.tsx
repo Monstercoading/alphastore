@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Image, Archive, MessageCircle, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { conversationAPI, ConversationWithMessages, Message } from '../services/conversationAPI';
+import { useNotifications } from '../context/NotificationContext';
+import { conversationAPI, Conversation, Message } from '../services/conversationAPI';
 import { socketService } from '../services/socketService';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
+import { MessageCircle, Send, Paperclip, X, Archive, Check, CheckCheck } from 'lucide-react';
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -19,18 +20,21 @@ interface ConversationItem {
   status: 'active' | 'archived';
   unreadCount: number;
   productTitle?: string;
+  unreadByAdmin: number;
+  unreadByCustomer: number;
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const { state } = useAuth();
-  const [conversations, setConversations] = useState<ConversationItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const { markConversationAsRead } = useNotifications();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -356,7 +360,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                           {conversation.unreadByAdmin}
                         </span>
                       )}
-                      {conversation.unreadByCustomer > 0 && state.user?.role === 'customer' && (
+                      {conversation.unreadByCustomer > 0 && state.user?.role !== 'admin' && (
                         <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
                           {conversation.unreadByCustomer}
                         </span>
