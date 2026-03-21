@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 // Success toast
 export const showSuccessToast = (message: string) => {
   toast.success(message, {
-    duration: 4000,
+    duration: 6000,
     position: 'top-center',
     style: {
       background: '#10B981',
@@ -15,7 +15,7 @@ export const showSuccessToast = (message: string) => {
 };
 
 // Error toast
-export const showErrorToast = (message: string, duration: number = 4000) => {
+export const showErrorToast = (message: string, duration: number = 6000) => {
   toast.error(message, {
     duration,
     position: 'top-center',
@@ -37,7 +37,7 @@ export const showToastWithAction = (
   const toastId = toast(
     message + ' ' + actionText,
     {
-      duration: 6000,
+      duration: 8000,
       position: 'top-center',
       style: {
         background: '#FEF3C7',
@@ -50,11 +50,11 @@ export const showToastWithAction = (
     }
   );
   
-  // Auto-execute action after 5 seconds
+  // Auto-execute action after 7 seconds
   setTimeout(() => {
     onAction();
     toast.dismiss(toastId);
-  }, 5000);
+  }, 7000);
 };
 
 // Loading toast
