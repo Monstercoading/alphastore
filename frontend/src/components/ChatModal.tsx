@@ -52,8 +52,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const response = await conversationAPI.getConversations();
-      const conversationItems: ConversationItem[] = response.data.map((conv: any) => ({
+      const response = state.user?.role === 'admin' 
+        ? await conversationAPI.getAdminConversations()
+        : await conversationAPI.getCustomerConversations();
+      const conversationItems: ConversationItem[] = response.map((conv: any) => ({
         _id: conv._id,
         customerName: conv.customerId?.firstName + ' ' + conv.customerId?.lastName || 'عميل',
         customerEmail: conv.customerId?.email || 'unknown@example.com',
