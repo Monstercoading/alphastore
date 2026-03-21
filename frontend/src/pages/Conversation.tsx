@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { conversationAPI, ConversationWithMessages, Message } from '../services/conversationAPI';
 import { socketService } from '../services/socketService';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
@@ -8,6 +9,7 @@ import { showErrorToast, showSuccessToast } from '../utils/toast';
 const Conversation: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { state } = useAuth();
+  const { markConversationAsRead } = useNotifications();
   const navigate = useNavigate();
   const [conversationData, setConversationData] = useState<ConversationWithMessages | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -128,6 +130,8 @@ const Conversation: React.FC = () => {
         setConversationData(data);
         setMessages(data.messages);
         await markMessagesAsRead(id);
+        // Mark conversation notifications as read
+        markConversationAsRead(id);
       } else {
         // Check if this conversation belongs to the current user
         const customerEmail = data.conversation.customerId?.email || data.conversation.customerEmail;
@@ -137,6 +141,8 @@ const Conversation: React.FC = () => {
             (customerName && `${data.conversation.customerId?.firstName} ${data.conversation.customerId?.lastName}` === `${state.user?.firstName} ${state.user?.lastName}`)) {
           setConversationData(data);
           setMessages(data.messages);
+          // Mark conversation notifications as read
+          markConversationAsRead(id);
         } else {
           showErrorToast('غير مصرح لك بالوصول إلى هذه المحادثة');
           navigate('/cart');

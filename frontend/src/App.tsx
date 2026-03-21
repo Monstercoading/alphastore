@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { NavigationProvider } from './context/NavigationContext';
 import Navbar from './components/Navbar';
 import Notifications from './components/Notifications';
@@ -26,7 +27,9 @@ function App() {
     <Router>
       <NavigationProvider>
         <AuthProvider>
-          <AppContent />
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
         </AuthProvider>
       </NavigationProvider>
     </Router>
