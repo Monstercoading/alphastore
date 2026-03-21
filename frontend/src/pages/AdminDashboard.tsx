@@ -264,42 +264,13 @@ const AdminDashboard: React.FC = () => {
     if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
       loadConversations();
       
-      // Set up polling for new conversations every 5 seconds
+      // Set up polling for new conversations every 3 seconds
       const pollInterval = setInterval(() => {
         loadConversations();
-      }, 5000);
+      }, 3000);
 
       return () => {
         clearInterval(pollInterval);
-      };
-    }
-  }, [state.isAuthenticated, activeTab]);
-
-  // Listen for new messages via SSE
-  useEffect(() => {
-    if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
-      const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api'}/conversations/notifications`);
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'NEW_MESSAGE') {
-            console.log('New message received:', data);
-            // Immediately refresh conversations
-            loadConversations();
-          }
-        } catch (err) {
-          console.error('Error parsing SSE message:', err);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        eventSource.close();
-      };
-
-      return () => {
-        eventSource.close();
       };
     }
   }, [state.isAuthenticated, activeTab]);
@@ -324,41 +295,23 @@ const AdminDashboard: React.FC = () => {
 
   const loadConversations = async () => {
     try {
+      console.log('Loading conversations...');
       const convs = await conversationAPI.getAdminConversations();
-      
-      // Check for new conversations
-      const previousCount = conversations.length;
-      const newCount = convs.length;
-      
-      if (newCount > previousCount && previousCount > 0) {
-        // Play notification sound for new conversations
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZgjMGHmO8+G');
-        audio.play().catch(() => {});
-        
-        // Show popup notification
-        const popup = document.createElement('div');
-        popup.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-xl z-50 animate-pulse';
-        popup.innerHTML = `
-          <div class="flex items-center gap-3">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <span>محادثة دعم جديدة!</span>
-          </div>
-        `;
-        document.body.appendChild(popup);
-        
-        setTimeout(() => {
-          popup.remove();
-        }, 5000);
-      }
+      console.log('Conversations loaded:', convs);
       
       setConversations(convs);
+      
       // Calculate unread messages
       const unread = convs.reduce((total: number, conv: any) => total + (conv.unreadByAdmin || 0), 0);
       setUnreadMessages(unread);
+      
+      console.log('Unread messages:', unread);
+      
+      // Show success feedback
+      showSuccessToast('تم تحديث المحادثات');
     } catch (error) {
       console.error('Error loading conversations:', error);
+      showErrorToast('فشل تحميل المحادثات');
     }
   };
 

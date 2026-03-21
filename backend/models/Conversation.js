@@ -57,7 +57,7 @@ const messageSchema = new mongoose.Schema({
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   senderType: {
     type: String,
@@ -66,7 +66,7 @@ const messageSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: true
+    required: false
   },
   imageUrl: {
     type: String
