@@ -618,145 +618,44 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   <div
                     key={message._id || index}
                     className={`flex mb-4 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
-                      fetchMessages(conversation._id);
-                    }}
-                    className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
-                      selectedConversation === conversation._id
-                        ? 'bg-[#1a1d24] border-l-4 border-l-red-600'
-                        : 'hover:bg-[#2a2d34]'
-                    }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-semibold text-white truncate">
-                            {getProductName(conversation)} Support
-                          </h4>
-                          <span className="text-xs text-gray-400 mr-2">
-                            {formatTime(conversation.lastMessageTime)}
+                    <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'order-1' : ''}`}>
+                      <div
+                        className={`px-4 py-3 rounded-2xl ${
+                          isMyMessage
+                            ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
+                            : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium opacity-75">
+                            {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-400 truncate mb-1">
-                          {conversation.customerName}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {conversation.lastMessage}
-                        </p>
+                        {message.imageUrl ? (
+                          <img
+                            src={message.imageUrl}
+                            alt="صورة"
+                            className="rounded-lg max-w-full h-auto"
+                          />
+                        ) : (
+                          <p className="text-sm">{message.content}</p>
+                        )}
                       </div>
-                      {conversation.unreadByAdmin > 0 && state.user?.role === 'admin' && (
-                        <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
-                          {conversation.unreadByAdmin}
-                        </span>
-                      )}
-                      {conversation.unreadByCustomer > 0 && state.user?.role !== 'admin' && (
-                        <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
-                          {conversation.unreadByCustomer}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Right Side - Chat Area */}
-          {selectedConversation ? (
-            <>
-              {/* Conversation Header */}
-              <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-red-900/30 p-2 rounded-full">
-                      <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                        {conversations.find(c => c._id === selectedConversation)?.customerName?.charAt(0) || 'U'}
+                      <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
+                        isMyMessage ? 'justify-end' : 'justify-start'
+                      }`}>
+                        <span>{formatTime(message.createdAt)}</span>
+                        {isMyMessage && (
+                          <span className="text-red-400">
+                            {getStatusIcon(getMessageStatus(message._id))}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-white">
-                        {(() => {
-                          const conversation = conversations.find(c => c._id === selectedConversation);
-                          const productName = conversation ? getProductName(conversation) : 'الدعم الفني';
-                          return `${productName} Support`;
-                        })()}
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        {conversations.find(c => c._id === selectedConversation)?.customerName}
-                      </p>
-                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {state.user?.role === 'admin' ? (
-                      <button
-                        onClick={() => deleteConversation(selectedConversation)}
-                        className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
-                        title="حذف التذكرة"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => closeConversation(selectedConversation)}
-                        className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
-                        title="إغلاق محادثة الدعم"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
-                {messages.map((message, index) => {
-                  const isMyMessage = isCurrentUser(message.senderId || '');
-                  return (
-                    <div
-                      key={message._id || index}
-                      className={`flex mb-4 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'order-1' : ''}`}>
-                        <div
-                          className={`px-4 py-3 rounded-2xl ${
-                            isMyMessage
-                              ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
-                              : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium opacity-75">
-                              {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
-                            </span>
-                          </div>
-                          {message.imageUrl ? (
-                            <img
-                              src={message.imageUrl}
-                              alt="صورة"
-                              className="rounded-lg max-w-full h-auto"
-                            />
-                          ) : (
-                            <p className="text-sm">{message.content}</p>
-                          )}
-                        </div>
-                        <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
-                          isMyMessage ? 'justify-end' : 'justify-start'
-                        }`}>
-                          <span>{formatTime(message.createdAt)}</span>
-                          {isMyMessage && (
-                            <span className="text-red-400">
-                              {getStatusIcon(getMessageStatus(message._id))}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                );
+              })}
                 
                 {/* Typing Indicator */}
                 {isTyping && (
