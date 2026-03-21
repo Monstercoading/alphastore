@@ -8,7 +8,13 @@ class SocketService {
     if (!this.socket) {
       console.log('🔌 Connecting to Socket.io server:', this.serverUrl);
       this.socket = io(this.serverUrl, {
-        transports: ['websocket', 'polling']
+        path: '/socket.io/',
+        transports: ['websocket', 'polling'], // Try both transports
+        timeout: 20000,
+        forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
       });
 
       this.socket.on('connect', () => {
