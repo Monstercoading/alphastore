@@ -1,11 +1,30 @@
 import React, { useState } from 'react';
 import { useNotifications } from '../context/NotificationContext';
-import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
 
 const NotificationsPanel: React.FC = () => {
   const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return 'الآن';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `منذ ${minutes} دقيقة`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `منذ ${hours} ساعة`;
+    } else if (diffInSeconds < 604800) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `منذ ${days} يوم`;
+    } else {
+      return date.toLocaleDateString('ar-SA');
+    }
+  };
 
   const handleNotificationClick = async (notification: any) => {
     if (!notification.read) {
@@ -135,10 +154,7 @@ const NotificationsPanel: React.FC = () => {
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          {formatDistanceToNow(new Date(notification.createdAt), {
-                            addSuffix: true,
-                            locale: ar
-                          })}
+                          {formatTimeAgo(notification.createdAt)}
                         </p>
                       </div>
                       <button
