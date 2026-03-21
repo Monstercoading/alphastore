@@ -39,16 +39,32 @@ const Conversation: React.FC = () => {
       
       // Listen for new messages
       socketService.onNewMessage((data) => {
+        console.log('New message received:', data);
         if (data.conversationId === id) {
-          setMessages(prev => [...prev, data.message]);
+          setMessages(prev => {
+            // Check if message already exists
+            const exists = prev.some(msg => msg._id === data.message._id);
+            if (!exists) {
+              return [...prev, data.message];
+            }
+            return prev;
+          });
           scrollToBottom();
         }
       });
 
       // Listen for receiveMessage event (backend emits this)
       socketService.on('receiveMessage', (data) => {
+        console.log('Receive message event:', data);
         if (data.conversationId === id) {
-          setMessages(prev => [...prev, data.message]);
+          setMessages(prev => {
+            // Check if message already exists
+            const exists = prev.some(msg => msg._id === data.message._id);
+            if (!exists) {
+              return [...prev, data.message];
+            }
+            return prev;
+          });
           scrollToBottom();
         }
       });
@@ -127,39 +143,22 @@ const Conversation: React.FC = () => {
     if (!newMessage.trim() || !id) return;
 
     const senderType: 'admin' | 'customer' = state.user?.role === 'admin' ? 'admin' : 'customer';
-    const tempMessage = {
-      _id: `temp-${Date.now()}`,
-      conversationId: id,
-      senderId: state.user?.id,
-      senderType,
-      content: newMessage.trim(),
-      isRead: false,
-      read: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Add message to UI immediately
-    setMessages(prev => [...prev, tempMessage]);
+    const messageContent = newMessage.trim();
+    
     setNewMessage('');
-    scrollToBottom();
-
     setSending(true);
+    
     try {
-      const message = await conversationAPI.sendMessage(id, newMessage.trim());
+      const message = await conversationAPI.sendMessage(id, messageContent);
       
-      // Replace temp message with real message
-      setMessages(prev => prev.map(msg => 
-        msg._id === tempMessage._id ? message : msg
-      ));
-      
+      // Add message to UI after server response
+      setMessages(prev => [...prev, message]);
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       showErrorToast('فشل إرسال الرسالة');
-      
-      // Remove temp message on error
-      setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id));
+      // Restore message content on error
+      setNewMessage(messageContent);
     } finally {
       setSending(false);
     }
@@ -225,25 +224,25 @@ const Conversation: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">جاري التحميل...</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-800 text-xl">جاري التحميل...</div>
       </div>
     );
   }
 
   if (!conversationData) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">المحادثة غير موجودة</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-800 text-xl">المحادثة غير موجودة</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
+      <div className="bg-gray-800 text-white p-4 shadow-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(state.user?.role === 'admin' ? '/admin' : '/cart')}
@@ -273,7 +272,7 @@ const Conversation: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gray-100">
         {messages.map((message, index) => (
           <div
             key={message._id || index}
@@ -289,9 +288,9 @@ const Conversation: React.FC = () => {
                 message.senderType === 'admin' ? 'bg-green-600' : 'bg-blue-600'
               }`}>
                 {message.senderType === 'admin' ? (
-                  // Headphone icon for admin
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                  // Headphone icon for admin - simplified design
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 1a9 9 0 00-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2a7 7 0 017-7 7 7 0 017 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 00-9-9z"/>
                   </svg>
                 ) : (
                   // Person icon for user
