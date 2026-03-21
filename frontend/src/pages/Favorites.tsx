@@ -26,6 +26,12 @@ const Favorites: React.FC = () => {
   const [allGames, setAllGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    if (state.isAuthenticated && state.user) {
+      loadFavorites();
+    }
+  }, [state.isAuthenticated, state.user]);
+
   // Check if user is logged in
   if (!state.isAuthenticated || !state.user) {
     return (
@@ -43,10 +49,6 @@ const Favorites: React.FC = () => {
       </div>
     );
   }
-
-  useEffect(() => {
-    loadFavorites();
-  }, []);
 
   const loadFavorites = async () => {
     try {
