@@ -499,9 +499,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
             <div className="flex-1 overflow-y-auto px-3 pb-3">
               {loading ? (
                 <div className="p-4 text-center text-gray-400">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                    <span>جاري التحميل...</span>
+                  </div>
                 </div>
-              </div>
-            ) : filteredConversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
               <div className="p-4 text-center text-gray-400">
                 <div className="flex flex-col items-center gap-2">
                   <MessageCircle className="w-12 h-12 text-gray-600" />
