@@ -126,7 +126,7 @@ const Conversation: React.FC = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !id) return;
 
-    const senderType = state.user?.role === 'admin' ? 'admin' : 'customer';
+    const senderType: 'admin' | 'customer' = state.user?.role === 'admin' ? 'admin' : 'customer';
     const tempMessage = {
       _id: `temp-${Date.now()}`,
       conversationId: id,
