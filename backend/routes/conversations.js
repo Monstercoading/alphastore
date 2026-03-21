@@ -331,51 +331,6 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-    // Update conversation unread count
-    await Conversation.findByIdAndUpdate(conversationId, { unreadByAdmin: 0 });
-
-    // Mark all customer messages as read
-    await Message.updateMany(
-      { 
-        conversationId,
-        senderType: 'customer',
-        read: false
-      },
-      { read: true }
-    );
-
-    console.log('Messages marked as read for conversation:', conversationId);
-    res.json({ message: 'Messages marked as read' });
-  } catch (error) {
-    console.error('Error marking messages as read:', error);
-    res.status(500).json({ error: 'Failed to mark messages as read' });
-  }
-});
-
-// Close conversation
-router.put('/:id/close', auth, async (req, res) => {
-  try {
-    const conversation = await Conversation.findById(req.params.id);
-    
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Only admin can close conversations
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    conversation.status = 'closed';
-    await conversation.save();
-
-    res.json({ message: 'Conversation closed' });
-  } catch (error) {
-    console.error('Error closing conversation:', error);
-    res.status(500).json({ error: 'Failed to close conversation' });
-  }
-});
-
 // SSE for real-time notifications
 router.get('/notifications', (req, res) => {
   res.writeHead(200, {
