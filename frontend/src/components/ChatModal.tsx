@@ -60,7 +60,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         customerName: conv.customerId?.firstName + ' ' + conv.customerId?.lastName || 'عميل',
         customerEmail: conv.customerId?.email || 'unknown@example.com',
         lastMessage: conv.lastMessage?.content || 'لا توجد رسائل',
-        lastMessageTime: conv.lastMessage?.timestamp || conv.createdAt,
+        lastMessageTime: conv.lastMessage?.createdAt || conv.createdAt,
         status: conv.status === 'closed' ? 'archived' : 'active',
         unreadCount: conv.unreadCount || 0,
         productTitle: conv.productId?.title
@@ -326,7 +326,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
                           isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'
                         }`}>
-                          <span>{formatTime(message.timestamp)}</span>
+                          <span>{formatTime(message.createdAt)}</span>
                           {isCurrentUser(message.senderType) && (
                             <span className="text-blue-600">
                               {message.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
