@@ -267,6 +267,39 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
   }
 });
 
+// Close conversation
+router.put('/:id/close', auth, async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    
+    // Update conversation status to closed
+    const conversation = await Conversation.findByIdAndUpdate(
+      conversationId,
+      { status: 'closed' },
+      { new: true }
+    ).populate('orderId', 'totalAmount createdAt')
+     .populate('customerId', 'firstName lastName email');
+    
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    
+    // Emit real-time update via Socket.io
+    const reqIo = req.app.get('io');
+    if (reqIo) {
+      reqIo.to(conversationId).emit('conversationClosed', {
+        conversationId,
+        status: 'closed'
+      });
+    }
+    
+    res.json(conversation);
+  } catch (error) {
+    console.error('Error closing conversation:', error);
+    res.status(500).json({ error: 'Failed to close conversation: ' + error.message });
+  }
+});
+
 // Mark messages as read (for admin)
 router.put('/:id/read', auth, async (req, res) => {
   try {
@@ -276,6 +309,27 @@ router.put('/:id/read', auth, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Unauthorized' });
     }
+
+    // Update all messages in conversation to isRead: true
+    await Message.updateMany(
+      { conversationId },
+      { isRead: true, read: true }
+    );
+    
+    // Emit real-time update via Socket.io
+    const reqIo = req.app.get('io');
+    if (reqIo) {
+      reqIo.to(conversationId).emit('messagesRead', {
+        conversationId
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({ error: 'Failed to mark messages as read: ' + error.message });
+  }
+});
 
     // Update conversation unread count
     await Conversation.findByIdAndUpdate(conversationId, { unreadByAdmin: 0 });

@@ -40,10 +40,11 @@ export interface Conversation {
 export interface Message {
   _id: string;
   conversationId: string;
-  senderId: string;
+  senderId?: string;
   senderType: 'customer' | 'admin';
-  content: string;
+  content?: string;
   imageUrl?: string;
+  isRead: boolean;
   read: boolean;
   createdAt: string;
   updatedAt: string;
@@ -124,6 +125,17 @@ class ConversationAPI {
       return response.data;
     } catch (error) {
       console.error('Error sending image message:', error);
+      throw error;
+    }
+  }
+
+  // Close conversation
+  async closeConversation(conversationId: string): Promise<any> {
+    try {
+      const response = await api.put(`/conversations/${conversationId}/close`);
+      return response.data;
+    } catch (error) {
+      console.error('Error closing conversation:', error);
       throw error;
     }
   }

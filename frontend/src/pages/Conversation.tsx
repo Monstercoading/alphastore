@@ -17,6 +17,7 @@ const Conversation: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -57,6 +58,21 @@ const Conversation: React.FC = () => {
 
       socketService.onUserStopTyping(() => {
         setTypingUser(null);
+      });
+
+      // Listen for conversation closed
+      socketService.on('conversationClosed', (data) => {
+        if (data.conversationId === id) {
+          showSuccessToast('تم إغلاق المحادثة');
+          navigate(state.user?.role === 'admin' ? '/admin' : '/cart');
+        }
+      });
+
+      // Listen for messages read
+      socketService.on('messagesRead', (data) => {
+        if (data.conversationId === id) {
+          setMessages(prev => prev.map(msg => ({ ...msg, isRead: true, read: true })));
+        }
       });
 
       return () => {
@@ -160,6 +176,7 @@ const Conversation: React.FC = () => {
     
     try {
       await conversationAPI.closeConversation(id);
+      setShowCloseConfirm(false);
       showSuccessToast('تم إغلاق المحادثة');
       navigate(state.user?.role === 'admin' ? '/admin' : '/cart');
     } catch (error) {
@@ -227,7 +244,7 @@ const Conversation: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={closeConversation}
+            onClick={() => setShowCloseConfirm(true)}
             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
           >
             إغلاق المحادثة
@@ -265,6 +282,9 @@ const Conversation: React.FC = () => {
                   hour: '2-digit',
                   minute: '2-digit'
                 })}
+                {isCurrentUser(message.senderType) && message.isRead && (
+                  <span className="mr-2">✓✓ تمت القراءة</span>
+                )}
               </p>
             </div>
           </div>
@@ -322,6 +342,30 @@ const Conversation: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-sm mx-4">
+            <h3 className="text-white text-lg font-semibold mb-4">تأكيد إغلاق المحادثة</h3>
+            <p className="text-gray-300 mb-6">هل أنت متأكد من أنك تريد إغلاق هذه المحادثة؟ لا يمكن إرسال رسائل جديدة بعد الإغلاق.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={closeConversation}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+              >
+                تأكيد الإغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
