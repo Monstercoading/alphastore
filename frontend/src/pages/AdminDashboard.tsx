@@ -319,8 +319,8 @@ const AdminDashboard: React.FC = () => {
       
       console.log('Unread messages:', unread);
       
-      // Show success feedback
-      showSuccessToast('تم تحديث المحادثات');
+      // Remove success toast to stop spamming
+      // showSuccessToast('تم تحديث المحادثات');
     } catch (error: any) {
       console.error('Error loading conversations:', error);
       console.error('Error response:', error.response);
@@ -1251,7 +1251,7 @@ const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => navigate(`/admin/conversation/${conversation._id}`)}
+                              onClick={() => navigate(`/conversation/${conversation._id}`)}
                               className="text-blue-400 hover:text-blue-300"
                             >
                               فتح المحادثة

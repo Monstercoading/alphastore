@@ -44,10 +44,21 @@ router.get('/admin', auth, async (req, res) => {
     console.log('Fetching admin conversations...');
     const conversations = await Conversation.find({ status: 'open' })
       .populate('orderId', 'totalAmount createdAt')
-      .sort({ lastMessageTime: -1 });
+      .populate('customerId', 'firstName lastName email')
+      .sort({ createdAt: -1 });
     
-    console.log('Admin conversations found:', conversations.length);
-    res.json(conversations);
+    // Format conversations to handle missing dates
+    const formattedConversations = conversations.map(conv => ({
+      ...conv.toObject(),
+      lastMessageTime: conv.lastMessageTime || conv.createdAt,
+      customerName: conv.customerName || (conv.customerId?.firstName && conv.customerId?.lastName 
+        ? `${conv.customerId.firstName} ${conv.customerId.lastName}` 
+        : 'زائر'),
+      customerEmail: conv.customerEmail || conv.customerId?.email || 'guest@example.com'
+    }));
+    
+    console.log('Admin conversations found:', formattedConversations.length);
+    res.json(formattedConversations);
   } catch (error) {
     console.error('Error fetching admin conversations:', error);
     res.status(500).json({ error: 'Failed to fetch conversations: ' + error.message });
@@ -112,7 +123,7 @@ router.post('/', async (req, res) => {
     }
 
     // Verify order exists
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('user');
     if (!order) {
       console.log('Order not found:', orderId);
       return res.status(404).json({ error: 'Order not found' });
