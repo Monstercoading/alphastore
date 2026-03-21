@@ -24,10 +24,9 @@ class SocketService {
         console.error('🚫 Socket connection error:', error);
         console.error('🚫 Error details:', {
           message: error.message,
-          description: error.description,
-          type: error.type,
-          context: error.context,
-          code: error.code
+          type: (error as any).type,
+          context: (error as any).context,
+          code: (error as any).code
         });
       });
     } else {

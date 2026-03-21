@@ -110,10 +110,9 @@ const ServerStatusDashboard: React.FC = () => {
     socketService.on('connect_error', (error) => {
       addSocketLog('Socket.io connection error', {
         message: error.message,
-        description: error.description,
-        type: error.type,
-        context: error.context,
-        code: error.code
+        type: (error as any).type,
+        context: (error as any).context,
+        code: (error as any).code
       }, 'error');
       
       // Test if backend is accessible for Socket.io
