@@ -593,14 +593,29 @@ app.get('/', (req, res) => {
     message: 'AlphaStore Backend API is running!',
     status: 'Active',
     timestamp: new Date().toISOString(),
+    socketio_status: io ? 'Active' : 'Inactive',
     endpoints: {
       api: '/api',
       auth: '/api/auth',
       products: '/api/products',
       orders: '/api/orders',
-      conversations: '/api/conversations'
+      conversations: '/api/conversations',
+      discount_codes: '/api/discount-codes',
+      games: '/api/games',
+      users: '/api/users',
+      notifications: '/api/admin/notifications'
     }
   });
+});
+
+// Force restart endpoint (for debugging)
+app.get('/force-restart', (req, res) => {
+  res.json({ 
+    message: 'Backend restart requested',
+    timestamp: new Date().toISOString(),
+    note: 'This will trigger a restart on Render'
+  });
+  process.exit(1); // Force restart
 });
 
 // ========== CONVERSATIONS API ==========
