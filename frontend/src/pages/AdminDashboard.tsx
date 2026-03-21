@@ -27,6 +27,7 @@ interface Game {
 
 interface Order {
   _id: string;
+  orderNumber?: number;
   user: {
     email: string;
     firstName: string;
