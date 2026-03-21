@@ -64,7 +64,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     return senderId === state.user?.id;
   };
 
-  const formatTime = (dateString: string | undefined) => {
+  const formatTime = (dateString: string | undefined | Date) => {
     if (!dateString) return 'الآن';
     
     try {
