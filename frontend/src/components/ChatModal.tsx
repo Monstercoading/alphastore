@@ -505,56 +505,56 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 </div>
               ) : filteredConversations.length === 0 ? (
-              <div className="p-4 text-center text-gray-400">
-                <div className="flex flex-col items-center gap-2">
-                  <MessageCircle className="w-12 h-12 text-gray-600" />
-                  {activeTab === 'open' ? 'لا توجد محادثات مفتوحة' : 'لا توجد محادثات مغلقة'}
-                </div>
-              </div>
-            ) : (
-              filteredConversations.map((conversation) => (
-                <div
-                  key={conversation._id}
-                  onClick={() => {
-                    setSelectedConversation(conversation._id);
-                    fetchMessages(conversation._id);
-                  }}
-                  className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
-                    selectedConversation === conversation._id
-                      ? 'bg-[#1a1d24] border-l-4 border-l-red-600'
-                      : 'hover:bg-[#2a2d34]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-semibold text-white truncate">
-                          {getProductName(conversation)} Support
-                        </h4>
-                        <span className="text-xs text-gray-400 mr-2">
-                          {formatTime(conversation.lastMessageTime)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-400 truncate mb-1">
-                        {conversation.customerName}
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">
-                        {conversation.lastMessage}
-                      </p>
-                    </div>
-                    {conversation.unreadByAdmin > 0 && state.user?.role === 'admin' && (
-                      <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
-                        {conversation.unreadByAdmin}
-                      </span>
-                    )}
-                    {conversation.unreadByCustomer > 0 && state.user?.role !== 'admin' && (
-                      <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
-                        {conversation.unreadByCustomer}
-                      </span>
-                    )}
+                <div className="p-4 text-center text-gray-400">
+                  <div className="flex flex-col items-center gap-2">
+                    <MessageCircle className="w-12 h-12 text-gray-600" />
+                    {activeTab === 'open' ? 'لا توجد محادثات مفتوحة' : 'لا توجد محادثات مغلقة'}
                   </div>
                 </div>
-              ))
+              ) : (
+                filteredConversations.map((conversation) => (
+                  <div
+                    key={conversation._id}
+                    onClick={() => {
+                      setSelectedConversation(conversation._id);
+                      fetchMessages(conversation._id);
+                    }}
+                    className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
+                      selectedConversation === conversation._id
+                        ? 'bg-[#1a1d24] border-l-4 border-l-red-600'
+                        : 'hover:bg-[#2a2d34]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-semibold text-white truncate">
+                            {getProductName(conversation)} Support
+                          </h4>
+                          <span className="text-xs text-gray-400 mr-2">
+                            {formatTime(conversation.lastMessageTime)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-400 truncate mb-1">
+                          {conversation.customerName}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {conversation.lastMessage}
+                        </p>
+                      </div>
+                      {conversation.unreadByAdmin > 0 && state.user?.role === 'admin' && (
+                        <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
+                          {conversation.unreadByAdmin}
+                        </span>
+                      )}
+                      {conversation.unreadByCustomer > 0 && state.user?.role !== 'admin' && (
+                        <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
+                          {conversation.unreadByCustomer}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
             )}
           </div>
         </div>
