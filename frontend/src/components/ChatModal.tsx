@@ -55,16 +55,49 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       const response = state.user?.role === 'admin' 
         ? await conversationAPI.getAdminConversations()
         : await conversationAPI.getCustomerConversations();
-      const conversationItems: ConversationItem[] = response.map((conv: any) => ({
-        _id: conv._id,
-        customerName: conv.customerId?.firstName + ' ' + conv.customerId?.lastName || 'عميل',
-        customerEmail: conv.customerId?.email || 'unknown@example.com',
-        lastMessage: conv.lastMessage?.content || 'لا توجد رسائل',
-        lastMessageTime: conv.lastMessage?.createdAt || conv.createdAt,
-        status: conv.status === 'closed' ? 'archived' : 'active',
-        unreadCount: conv.unreadCount || 0,
-        productTitle: conv.productId?.title
-      }));
+      const conversationItems: ConversationItem[] = response.map((conv: any) => {
+        // Get customer name properly
+        let customerName = 'عميل';
+        if (conv.customerId) {
+          if (typeof conv.customerId === 'object') {
+            customerName = `${conv.customerId.firstName || ''} ${conv.customerId.lastName || ''}`.trim() || 'عميل';
+          } else if (typeof conv.customerId === 'string') {
+            customerName = conv.customerId;
+          }
+        } else if (conv.customerName) {
+          customerName = conv.customerName;
+        }
+
+        // Get customer email
+        let customerEmail = 'unknown@example.com';
+        if (conv.customerId?.email) {
+          customerEmail = conv.customerId.email;
+        } else if (conv.customerEmail) {
+          customerEmail = conv.customerEmail;
+        }
+
+        // Get product title
+        let productTitle = '';
+        if (conv.productId?.title) {
+          productTitle = conv.productId.title;
+        } else if (conv.productTitle) {
+          productTitle = conv.productTitle;
+        } else if (conv.orderId && conv.orderId.games && conv.orderId.games.length > 0) {
+          // Try to get from order
+          productTitle = conv.orderId.games[0].game?.title || '';
+        }
+
+        return {
+          _id: conv._id,
+          customerName,
+          customerEmail,
+          lastMessage: conv.lastMessage?.content || 'لا توجد رسائل',
+          lastMessageTime: conv.lastMessage?.createdAt || conv.createdAt,
+          status: conv.status === 'closed' ? 'archived' : 'active',
+          unreadCount: conv.unreadCount || (state.user?.role === 'admin' ? conv.unreadByAdmin || 0 : conv.unreadByCustomer || 0),
+          productTitle
+        };
+      });
       setConversations(conversationItems);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -186,16 +219,16 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-[#1a1d24] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-gray-800">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-white bg-opacity-20 p-3 rounded-full">
               <MessageCircle className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-xl font-bold">المحادثات</h2>
-              <p className="text-blue-100 text-sm">{state.user?.role === 'admin' ? 'لوحة تحكم المحادثات' : 'محادثاتي'}</p>
+              <p className="text-red-100 text-sm">{state.user?.role === 'admin' ? 'لوحة تحكم المحادثات' : 'محادثاتي'}</p>
             </div>
           </div>
           <button
@@ -208,15 +241,15 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left Sidebar - Conversations List */}
-          <div className="w-[35%] border-r border-gray-100 flex flex-col bg-gray-50">
+          <div className="w-[35%] border-r border-gray-800 flex flex-col bg-[#0a0a0a]">
             {/* Tabs */}
-            <div className="flex bg-white border-b border-gray-100 m-3 rounded-lg overflow-hidden">
+            <div className="flex bg-[#1a1d24] border-b border-gray-800 m-3 rounded-lg overflow-hidden">
               <button
                 onClick={() => setActiveTab('active')}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === 'active'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-400 hover:bg-[#2a2d34]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -228,8 +261,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                 onClick={() => setActiveTab('archived')}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === 'archived'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-400 hover:bg-[#2a2d34]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -242,16 +275,16 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
             {/* Conversations List */}
             <div className="flex-1 overflow-y-auto px-3 pb-3">
               {loading ? (
-                <div className="p-4 text-center text-gray-500">
+                <div className="p-4 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
                     جاري التحميل...
                   </div>
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
+                <div className="p-4 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
-                    <MessageCircle className="w-12 h-12 text-gray-300" />
+                    <MessageCircle className="w-12 h-12 text-gray-600" />
                     {activeTab === 'active' ? 'لا توجد محادثات نشطة' : 'لا توجد محادثات مؤرشفة'}
                   </div>
                 </div>
@@ -260,33 +293,33 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   <div
                     key={conversation._id}
                     onClick={() => setSelectedConversation(conversation._id)}
-                    className={`p-4 mb-2 bg-white rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                    className={`p-4 mb-2 bg-[#1a1d24] rounded-lg cursor-pointer transition-all hover:shadow-md border ${
                       selectedConversation === conversation._id
-                        ? 'bg-blue-50 border-2 border-blue-200 shadow-md'
-                        : 'border border-gray-100 hover:border-blue-200'
+                        ? 'bg-red-900/30 border-red-600 shadow-md'
+                        : 'border-gray-700 hover:border-red-600'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-gray-900 truncate">
+                          <h3 className="font-medium text-white truncate">
                             {conversation.customerName}
                           </h3>
-                          <span className="text-xs text-gray-500 mr-2">
+                          <span className="text-xs text-gray-400 mr-2">
                             {formatTime(conversation.lastMessageTime)}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 truncate mt-1">
+                        <p className="text-sm text-gray-400 truncate mt-1">
                           {conversation.lastMessage}
                         </p>
                         {conversation.productTitle && (
-                          <p className="text-xs text-blue-600 truncate mt-1">
-                            {conversation.productTitle}
+                          <p className="text-xs text-red-400 truncate mt-1">
+                            🎮 {conversation.productTitle}
                           </p>
                         )}
                       </div>
                       {conversation.unreadCount > 0 && (
-                        <div className="ml-2 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        <div className="ml-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                           {conversation.unreadCount}
                         </div>
                       )}
@@ -298,30 +331,30 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Right Side - Messages */}
-          <div className="w-[65%] flex flex-col bg-white">
+          <div className="w-[65%] flex flex-col bg-[#0a0a0a]">
             {selectedConversation ? (
               <>
                 {/* Conversation Header */}
-                <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      <div className="bg-red-900/30 p-2 rounded-full">
+                        <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                           {conversations.find(c => c._id === selectedConversation)?.customerName?.charAt(0) || 'U'}
                         </div>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-white">
                           {conversations.find(c => c._id === selectedConversation)?.customerName}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-400">
                           {conversations.find(c => c._id === selectedConversation)?.customerEmail}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => archiveConversation(selectedConversation)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600 hover:text-red-600"
+                      className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
                       title="أرشفة المحادثة"
                     >
                       <Archive className="w-4 h-4" />
@@ -330,7 +363,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
+                <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
                   {messages.map((message, index) => (
                     <div
                       key={message._id || index}
@@ -340,8 +373,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         <div
                           className={`px-4 py-3 rounded-2xl shadow-sm ${
                             isCurrentUser(message.senderType)
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-sm'
-                              : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+                              ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
+                              : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
                           }`}
                         >
                           <p className="text-sm">{message.content}</p>
@@ -351,7 +384,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         }`}>
                           <span>{formatTime(message.createdAt)}</span>
                           {isCurrentUser(message.senderType) && (
-                            <span className="text-blue-600">
+                            <span className="text-red-400">
                               {message.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
                             </span>
                           )}
@@ -363,7 +396,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Message Input */}
-                <div className="p-4 border-t border-gray-100 bg-gradient-to-r from-white to-gray-50">
+                <div className="p-4 border-t border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
                   <div className="flex items-center gap-3">
                     <input
                       type="file"
@@ -375,7 +408,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="p-3 hover:bg-gray-100 rounded-full transition-all text-gray-600 disabled:opacity-50 hover:scale-105"
+                      className="p-3 hover:bg-[#2a2d34] rounded-full transition-all text-gray-400 disabled:opacity-50 hover:scale-105"
                       title="إرسال صورة"
                     >
                       <Image className="w-5 h-5" />
@@ -387,14 +420,14 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         placeholder="اكتب رسالتك..."
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                        className="w-full px-4 py-3 bg-[#1a1d24] border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-500 pr-12"
                         disabled={sending || uploading}
                       />
                     </div>
                     <button
                       onClick={sendMessage}
                       disabled={sending || uploading || !newMessage.trim()}
-                      className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 shadow-lg"
+                      className="p-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 shadow-lg"
                     >
                       <Send className="w-5 h-5" />
                     </button>
@@ -402,13 +435,13 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+              <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] to-[#1a1d24]">
                 <div className="text-center">
-                  <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MessageCircle className="w-10 h-10 text-blue-600" />
+                  <div className="bg-red-900/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="w-10 h-10 text-red-600" />
                   </div>
-                  <p className="text-gray-600 font-medium">اختر محادثة لبدء الدردشة</p>
-                  <p className="text-gray-400 text-sm mt-1">حدد محادثة من القائمة للبدء</p>
+                  <p className="text-gray-400 font-medium">اختر محادثة لبدء الدردشة</p>
+                  <p className="text-gray-500 text-sm mt-1">حدد محادثة من القائمة للبدء</p>
                 </div>
               </div>
             )}

@@ -224,47 +224,67 @@ const Conversation: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-800 text-xl">جاري التحميل...</div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-gray-400 text-xl">جاري التحميل...</div>
       </div>
     );
   }
 
   if (!conversationData) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-800 text-xl">المحادثة غير موجودة</div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-gray-400 text-xl">المحادثة غير موجودة</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       {/* Header */}
-      <div className="bg-gray-800 text-white p-4 shadow-lg">
+      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-4 shadow-lg">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(state.user?.role === 'admin' ? '/admin' : '/cart')}
-              className="text-gray-400 hover:text-white"
+              className="text-red-100 hover:text-white"
             >
               ← رجوع
             </button>
             <div>
               <h2 className="text-white font-semibold">
                 {state.user?.role === 'admin' 
-                  ? conversationData.conversation.customerName || 'زائر'
+                  ? (() => {
+                      // Get customer name properly
+                      let customerName = 'زائر';
+                      if (conversationData.conversation.customerId) {
+                        if (typeof conversationData.conversation.customerId === 'object') {
+                          customerName = `${conversationData.conversation.customerId.firstName || ''} ${conversationData.conversation.customerId.lastName || ''}`.trim() || 'زائر';
+                        } else if (typeof conversationData.conversation.customerId === 'string') {
+                          customerName = conversationData.conversation.customerId;
+                        }
+                      } else if (conversationData.conversation.customerName) {
+                        customerName = conversationData.conversation.customerName;
+                      }
+                      return customerName;
+                    })()
                   : 'خدمة العملاء'
                 }
               </h2>
               {state.user?.role === 'admin' && (
-                <p className="text-gray-400 text-sm">{conversationData.conversation.customerEmail}</p>
+                <p className="text-red-100 text-sm">
+                  {(() => {
+                    let email = conversationData.conversation.customerId?.email || 
+                             conversationData.conversation.customerEmail || 
+                             'unknown@example.com';
+                    return email;
+                  })()}
+                </p>
               )}
             </div>
           </div>
           <button
             onClick={() => setShowCloseConfirm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+            className="bg-red-800 hover:bg-red-900 text-white px-4 py-2 rounded-lg"
           >
             إغلاق المحادثة
           </button>
@@ -272,7 +292,7 @@ const Conversation: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gray-100">
+      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
         {messages.map((message, index) => (
           <div
             key={message._id || index}
@@ -285,7 +305,7 @@ const Conversation: React.FC = () => {
             }`}>
               {/* Avatar/Icon */}
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
-                message.senderType === 'admin' ? 'bg-green-600' : 'bg-blue-600'
+                message.senderType === 'admin' ? 'bg-red-600' : 'bg-blue-600'
               }`}>
                 {message.senderType === 'admin' ? (
                   // Headphone icon for admin - simplified design
@@ -301,10 +321,10 @@ const Conversation: React.FC = () => {
               </div>
               
               {/* Message bubble */}
-              <div className={`px-4 py-2 rounded-2xl ${
+              <div className={`px-4 py-3 rounded-2xl ${
                 message.senderType === 'admin' 
-                  ? 'bg-white text-gray-800 shadow-md' 
-                  : 'bg-blue-600 text-white'
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md' 
+                  : 'bg-[#1a1d24] text-gray-200 border border-gray-700'
               }`}>
                 {message.imageUrl ? (
                   <img
@@ -316,7 +336,7 @@ const Conversation: React.FC = () => {
                   <p className="text-sm">{message.content}</p>
                 )}
                 <p className={`text-xs mt-1 ${
-                  message.senderType === 'admin' ? 'text-gray-500' : 'text-blue-100'
+                  message.senderType === 'admin' ? 'text-red-100' : 'text-gray-400'
                 }`}>
                   {message.createdAt 
                     ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
@@ -325,7 +345,7 @@ const Conversation: React.FC = () => {
                       })
                     : 'الآن'
                   }
-                  {message.senderType !== 'admin' && message.isRead && (
+                  {message.senderType !== 'admin' && message.read && (
                     <span className="mr-1">✓✓</span>
                   )}
                 </p>
@@ -338,12 +358,12 @@ const Conversation: React.FC = () => {
         {typingUser && (
           <div className="flex justify-start mb-4">
             <div className="flex items-end gap-2">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-sm">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
                 </svg>
               </div>
-              <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-md">
+              <div className="bg-[#1a1d24] text-gray-200 px-4 py-2 rounded-2xl border border-gray-700">
                 <div className="flex space-x-1">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -358,7 +378,7 @@ const Conversation: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="bg-gray-800 border-t border-gray-700 p-4">
+      <div className="bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a] border-t border-gray-800 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex gap-2">
             <input
@@ -370,7 +390,7 @@ const Conversation: React.FC = () => {
               }}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="اكتب رسالتك..."
-              className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 bg-[#1a1d24] border border-gray-700 text-white px-4 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent placeholder-gray-500"
               disabled={sending || uploading}
             />
             <input
@@ -383,14 +403,14 @@ const Conversation: React.FC = () => {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploading}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+              className="bg-[#1a1d24] hover:bg-[#2a2d34] text-gray-400 px-4 py-3 rounded-full disabled:opacity-50 transition-colors"
             >
               📷
             </button>
             <button
               onClick={sendMessage}
               disabled={sending || uploading || !newMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-full disabled:opacity-50 transition-all hover:scale-105 shadow-lg"
             >
               {sending ? 'جاري الإرسال...' : 'إرسال'}
             </button>
@@ -401,13 +421,13 @@ const Conversation: React.FC = () => {
       {/* Confirmation Modal */}
       {showCloseConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-sm mx-4">
+          <div className="bg-[#1a1d24] p-6 rounded-lg max-w-sm mx-4 border border-gray-800">
             <h3 className="text-white text-lg font-semibold mb-4">تأكيد إغلاق المحادثة</h3>
-            <p className="text-gray-300 mb-6">هل أنت متأكد من أنك تريد إغلاق هذه المحادثة؟ لا يمكن إرسال رسائل جديدة بعد الإغلاق.</p>
+            <p className="text-gray-400 mb-6">هل أنت متأكد من أنك تريد إغلاق هذه المحادثة؟ لا يمكن إرسال رسائل جديدة بعد الإغلاق.</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowCloseConfirm(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
               >
                 إلغاء
               </button>
