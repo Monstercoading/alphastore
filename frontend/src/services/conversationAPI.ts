@@ -140,6 +140,17 @@ class ConversationAPI {
     }
   }
 
+  // Delete conversation
+  async deleteConversation(conversationId: string): Promise<any> {
+    try {
+      const response = await api.delete(`/conversations/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      throw error;
+    }
+  }
+
   // Mark messages as read (for admin)
   async markAsRead(conversationId: string): Promise<void> {
     try {
