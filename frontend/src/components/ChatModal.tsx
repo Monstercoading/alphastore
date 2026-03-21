@@ -34,7 +34,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [messageStatuses, setMessageStatuses] = useState<Record<string, 'sending' | 'sent' | 'delivered' | 'read'>>({});
@@ -468,29 +468,29 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
             {/* Tabs */}
             <div className="flex bg-[#1a1d24] border-b border-gray-800 m-3 rounded-lg overflow-hidden">
               <button
-                onClick={() => setActiveTab('active')}
+                onClick={() => setActiveTab('open')}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'active'
+                  activeTab === 'open'
                     ? 'bg-red-600 text-white'
                     : 'text-gray-400 hover:bg-[#2a2d34]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <MessageCircle className="w-4 h-4" />
-                  المحادثات النشطة
+                  المحادثات المفتوحة
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab('archived')}
+                onClick={() => setActiveTab('closed')}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'archived'
+                  activeTab === 'closed'
                     ? 'bg-red-600 text-white'
                     : 'text-gray-400 hover:bg-[#2a2d34]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <Archive className="w-4 h-4" />
-                  الأرشيف
+                  المحادثات المغلقة
                 </div>
               </button>
             </div>
@@ -499,24 +499,122 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
             <div className="flex-1 overflow-y-auto px-3 pb-3">
               {loading ? (
                 <div className="p-4 text-center text-gray-400">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                    جاري التحميل...
+                </div>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                <div className="flex flex-col items-center gap-2">
+                  <MessageCircle className="w-12 h-12 text-gray-600" />
+                  {activeTab === 'open' ? 'لا توجد محادثات مفتوحة' : 'لا توجد محادثات مغلقة'}
+                </div>
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div
+                  key={conversation._id}
+                  onClick={() => {
+                    setSelectedConversation(conversation._id);
+                    fetchMessages(conversation._id);
+                  }}
+                  className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
+                    selectedConversation === conversation._id
+                      ? 'bg-[#1a1d24] border-l-4 border-l-red-600'
+                      : 'hover:bg-[#2a2d34]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-semibold text-white truncate">
+                          {getProductName(conversation)} Support
+                        </h4>
+                        <span className="text-xs text-gray-400 mr-2">
+                          {formatTime(conversation.lastMessageTime)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-400 truncate mb-1">
+                        {conversation.customerName}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">
+                        {conversation.lastMessage}
+                      </p>
+                    </div>
+                    {conversation.unreadByAdmin > 0 && state.user?.role === 'admin' && (
+                      <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
+                        {conversation.unreadByAdmin}
+                      </span>
+                    )}
+                    {conversation.unreadByCustomer > 0 && state.user?.role !== 'admin' && (
+                      <span className="bg-red-600 text-white text-xs rounded-full px-2 py-1 mr-3">
+                        {conversation.unreadByCustomer}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ) : filteredConversations.length === 0 ? (
-                <div className="p-4 text-center text-gray-400">
-                  <div className="flex flex-col items-center gap-2">
-                    <MessageCircle className="w-12 h-12 text-gray-600" />
-                    {activeTab === 'active' ? 'لا توجد محادثات نشطة' : 'لا توجد محادثات مؤرشفة'}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Right Side - Chat Area */}
+        {selectedConversation ? (
+          <>
+            {/* Conversation Header */}
+            <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-900/30 p-2 rounded-full">
+                    <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      {conversations.find(c => c._id === selectedConversation)?.customerName?.charAt(0) || 'U'}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">
+                      {(() => {
+                        const conversation = conversations.find(c => c._id === selectedConversation);
+                        const productName = conversation ? getProductName(conversation) : 'الدعم الفني';
+                        return `${productName} Support`;
+                      })()}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {conversations.find(c => c._id === selectedConversation)?.customerName}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                filteredConversations.map((conversation) => (
+                <div className="flex items-center gap-2">
+                  {state.user?.role === 'admin' ? (
+                    <button
+                      onClick={() => deleteConversation(selectedConversation)}
+                      className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
+                      title="حذف التذكرة"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => closeConversation(selectedConversation)}
+                      className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
+                      title="إغلاق محادثة الدعم"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
+              {messages.map((message, index) => {
+                const isMyMessage = isCurrentUser(message.senderId || '');
+                return (
                   <div
-                    key={conversation._id}
-                    onClick={() => {
-                      setSelectedConversation(conversation._id);
+                    key={message._id || index}
+                    className={`flex mb-4 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
                       fetchMessages(conversation._id);
                     }}
                     className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
