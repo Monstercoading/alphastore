@@ -264,13 +264,42 @@ const AdminDashboard: React.FC = () => {
     if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
       loadConversations();
       
-      // Set up polling for new conversations every 10 seconds
+      // Set up polling for new conversations every 5 seconds
       const pollInterval = setInterval(() => {
         loadConversations();
-      }, 10000);
+      }, 5000);
 
       return () => {
         clearInterval(pollInterval);
+      };
+    }
+  }, [state.isAuthenticated, activeTab]);
+
+  // Listen for new messages via SSE
+  useEffect(() => {
+    if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
+      const eventSource = new EventSource(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api'}/conversations/notifications`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'NEW_MESSAGE') {
+            console.log('New message received:', data);
+            // Immediately refresh conversations
+            loadConversations();
+          }
+        } catch (err) {
+          console.error('Error parsing SSE message:', err);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        eventSource.close();
+      };
+
+      return () => {
+        eventSource.close();
       };
     }
   }, [state.isAuthenticated, activeTab]);

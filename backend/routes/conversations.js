@@ -155,14 +155,28 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    // For guest users, allow sending messages without authentication
-    const isGuest = !req.user;
-    const senderType = isGuest ? 'customer' : (req.user.role === 'admin' ? 'admin' : 'customer');
+    // Try to get user from token if available
+    let user = null;
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.header('x-auth-token');
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        user = decoded.user;
+      } catch (err) {
+        console.log('Invalid token, proceeding as guest');
+      }
+    }
+
+    // Determine sender type
+    const isGuest = !user;
+    const senderType = isGuest ? 'customer' : (user.role === 'admin' ? 'admin' : 'customer');
 
     // Create message
     const message = new Message({
       conversationId,
-      senderId: req.user?.id || null,
+      senderId: user?.id || null,
       senderType,
       content: content || '',
       imageUrl: req.file ? `/uploads/conversations/${req.file.filename}` : null
@@ -234,6 +248,32 @@ router.put('/:id/close', auth, async (req, res) => {
     console.error('Error closing conversation:', error);
     res.status(500).json({ error: 'Failed to close conversation' });
   }
+});
+
+// SSE for real-time notifications
+router.get('/notifications', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  // Store the connection for sending notifications
+  if (!global.adminNotificationListeners) {
+    global.adminNotificationListeners = [];
+  }
+  
+  const listener = { res, id: Date.now() };
+  global.adminNotificationListeners.push(listener);
+
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', message: 'Connected to notifications' })}\n\n`);
+
+  // Remove listener when connection closes
+  req.on('close', () => {
+    global.adminNotificationListeners = global.adminNotificationListeners.filter(l => l.id !== listener.id);
+  });
 });
 
 module.exports = router;
