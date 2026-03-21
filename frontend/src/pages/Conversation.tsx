@@ -26,8 +26,8 @@ const Conversation: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const isCurrentUser = (senderType: string) => {
-    return senderType === (state.user?.role === 'admin' ? 'admin' : 'customer');
+  const isCurrentUser = (senderId: string) => {
+    return senderId === state.user?.id;
   };
 
   useEffect(() => {
@@ -295,66 +295,74 @@ const Conversation: React.FC = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
-        {messages.map((message, index) => (
-          <div
-            key={message._id || index}
-            className={`flex mb-4 ${
-              message.senderType === 'admin' ? 'justify-end' : 'justify-start'
-            }`}
-          >
-            <div className={`flex items-end gap-2 max-w-xs lg:max-w-md ${
-              message.senderType === 'admin' ? 'flex-row-reverse' : 'flex-row'
-            }`}>
-              {/* Avatar/Icon */}
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
-                message.senderType === 'admin' ? 'bg-red-600' : 'bg-blue-600'
+        {messages.map((message, index) => {
+          const isMyMessage = isCurrentUser(message.senderId || '');
+          return (
+            <div
+              key={message._id || index}
+              className={`flex mb-4 ${
+                isMyMessage ? 'justify-end' : 'justify-start'
+              }`}
+            >
+              <div className={`flex items-end gap-2 max-w-xs lg:max-w-md ${
+                isMyMessage ? 'flex-row-reverse' : 'flex-row'
               }`}>
-                {message.senderType === 'admin' ? (
-                  // Headphone icon for admin - simplified design
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 1a9 9 0 00-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2a7 7 0 017-7 7 7 0 017 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 00-9-9z"/>
-                  </svg>
-                ) : (
-                  // Person icon for user
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                  </svg>
-                )}
-              </div>
-              
-              {/* Message bubble */}
-              <div className={`px-4 py-3 rounded-2xl ${
-                message.senderType === 'admin' 
-                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md' 
-                  : 'bg-[#1a1d24] text-gray-200 border border-gray-700'
-              }`}>
-                {message.imageUrl ? (
-                  <img
-                    src={message.imageUrl}
-                    alt="صورة"
-                    className="rounded-lg max-w-full h-auto"
-                  />
-                ) : (
-                  <p className="text-sm">{message.content}</p>
-                )}
-                <p className={`text-xs mt-1 ${
-                  message.senderType === 'admin' ? 'text-red-100' : 'text-gray-400'
+                {/* Avatar/Icon */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
+                  isMyMessage ? 'bg-red-600' : 'bg-blue-600'
                 }`}>
-                  {message.createdAt 
-                    ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : 'الآن'
-                  }
-                  {message.senderType !== 'admin' && message.read && (
-                    <span className="mr-1">✓✓</span>
+                  {isMyMessage ? (
+                    // Headphone icon for admin - simplified design
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 1a9 9 0 00-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2a7 7 0 017-7 7 7 0 017 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 00-9-9z"/>
+                    </svg>
+                  ) : (
+                    // Person icon for user
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                    </svg>
                   )}
-                </p>
+                </div>
+                
+                {/* Message bubble */}
+                <div className={`px-4 py-3 rounded-2xl ${
+                  isMyMessage 
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md' 
+                    : 'bg-[#1a1d24] text-gray-200 border border-gray-700'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium opacity-75">
+                      {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
+                    </span>
+                  </div>
+                  {message.imageUrl ? (
+                    <img
+                      src={message.imageUrl}
+                      alt="صورة"
+                      className="rounded-lg max-w-full h-auto"
+                    />
+                  ) : (
+                    <p className="text-sm">{message.content}</p>
+                  )}
+                  <p className={`text-xs mt-1 ${
+                    isMyMessage ? 'text-red-100' : 'text-gray-400'
+                  }`}>
+                    {message.createdAt 
+                      ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'الآن'
+                    }
+                    {isMyMessage && message.read && (
+                      <span className="mr-1">✓✓</span>
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {/* Typing indicator */}
         {typingUser && (

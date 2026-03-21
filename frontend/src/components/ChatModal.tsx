@@ -38,8 +38,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const isCurrentUser = (senderType: string) => {
-    return senderType === (state.user?.role === 'admin' ? 'admin' : 'customer');
+  const isCurrentUser = (senderId: string) => {
+    return senderId === state.user?.id;
   };
 
   const formatTime = (dateString: string | undefined) => {
@@ -413,47 +413,50 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
-                  {messages.map((message, index) => (
-                    <div
-                      key={message._id || index}
-                      className={`flex mb-4 ${isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-xs lg:max-w-md ${isCurrentUser(message.senderType) ? 'order-1' : ''}`}>
-                        <div
-                          className={`px-4 py-3 rounded-2xl ${
-                            isCurrentUser(message.senderType)
-                              ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
-                              : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium opacity-75">
-                              {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
-                            </span>
+                  {messages.map((message, index) => {
+                    const isMyMessage = isCurrentUser(message.senderId || '');
+                    return (
+                      <div
+                        key={message._id || index}
+                        className={`flex mb-4 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'order-1' : ''}`}>
+                          <div
+                            className={`px-4 py-3 rounded-2xl ${
+                              isMyMessage
+                                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
+                                : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium opacity-75">
+                                {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
+                              </span>
+                            </div>
+                            {message.imageUrl ? (
+                              <img
+                                src={message.imageUrl}
+                                alt="صورة"
+                                className="rounded-lg max-w-full h-auto"
+                              />
+                            ) : (
+                              <p className="text-sm">{message.content}</p>
+                            )}
                           </div>
-                          {message.imageUrl ? (
-                            <img
-                              src={message.imageUrl}
-                              alt="صورة"
-                              className="rounded-lg max-w-full h-auto"
-                            />
-                          ) : (
-                            <p className="text-sm">{message.content}</p>
-                          )}
-                        </div>
-                        <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
-                          isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'
-                        }`}>
-                          <span>{formatTime(message.createdAt)}</span>
-                          {isCurrentUser(message.senderType) && (
-                            <span className="text-red-400">
-                              {message.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                            </span>
-                          )}
+                          <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
+                            isMyMessage ? 'justify-end' : 'justify-start'
+                          }`}>
+                            <span>{formatTime(message.createdAt)}</span>
+                            {isMyMessage && (
+                              <span className="text-red-400">
+                                {message.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 
