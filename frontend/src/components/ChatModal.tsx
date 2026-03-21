@@ -657,62 +657,44 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 );
               })}
-                
-                {/* Typing Indicator */}
-                {isTyping && (
-                  <div className="flex justify-start mb-4">
-                    <div className="bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700 px-4 py-3 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
-                        <span className="text-sm text-gray-400">{typingUser} يكتب...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
+            </div>
 
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => e.target.files?.[0] && sendImage(e.target.files[0])}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
-                    title="إرسال صورة"
-                  >
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={handleInputChange}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="اكتب رسالتك..."
-                    className="flex-1 bg-[#0a0a0a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-red-500"
-                    disabled={sending}
-                  />
-                  <button
-                    onClick={sendMessage}
-                    disabled={sending || !newMessage.trim()}
-                    className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
+            {/* Message Input */}
+            <div className="p-4 border-t border-gray-800 bg-gradient-to-r from-[#1a1d24] to-[#0a0a0a]">
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => e.target.files?.[0] && sendImage(e.target.files[0])}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
+                  title="إرسال صورة"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  placeholder="اكتب رسالتك..."
+                  className="flex-1 bg-[#0a0a0a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-red-500"
+                  disabled={sending}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={sending || !newMessage.trim()}
+                  className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
               </div>
+            </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400">
