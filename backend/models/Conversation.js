@@ -85,7 +85,7 @@ conversationSchema.index({ customerId: 1 });
 conversationSchema.index({ status: 1 });
 messageSchema.index({ conversationId: 1, createdAt: 1 });
 
-const Conversation = mongoose.model('Conversation', conversationSchema);
-const Message = mongoose.model('Message', messageSchema);
+const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', conversationSchema);
+const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
 
 module.exports = { Conversation, Message };

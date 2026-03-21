@@ -161,6 +161,6 @@ discountCodeSchema.methods.calculateDiscount = function(originalAmount, productI
   };
 };
 
-const DiscountCode = mongoose.model('DiscountCode', discountCodeSchema);
+const DiscountCode = mongoose.models.DiscountCode || mongoose.model('DiscountCode', discountCodeSchema);
 
 module.exports = DiscountCode;

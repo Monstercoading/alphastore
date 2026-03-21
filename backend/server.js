@@ -446,7 +446,25 @@ app.post('/api/auth/google', async (req, res) => {
       REDIRECT_URI
     );
 
-    const { tokens } = await oauth2Client.getToken(code);
+    let tokens;
+    try {
+      ({ tokens } = await oauth2Client.getToken(code));
+    } catch (error: any) {
+      console.error('Google OAuth token exchange error:', error);
+      
+      if (error.message === 'invalid_grant') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'انتهت صلاحية رمز المصادقة. يرجى المحاولة مرة أخرى.' 
+        });
+      }
+      
+      return res.status(400).json({ 
+        success: false, 
+        message: 'فشل المصادقة مع Google. يرجى المحاولة مرة أخرى.' 
+      });
+    }
+    
     oauth2Client.setCredentials(tokens);
 
     // Get user info
