@@ -5,6 +5,16 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 
+// Test endpoint for Server Status Dashboard
+router.get('/login', (req, res) => {
+  res.json({ 
+    message: 'Auth API is working',
+    endpoint: '/api/auth/login',
+    method: 'POST (use POST for actual login)',
+    status: 'Active'
+  });
+});
+
 // Register
 router.post('/register', [
   body('email').isEmail().withMessage('Please enter a valid email'),

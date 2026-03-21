@@ -30,6 +30,16 @@ const upload = multer({
   }
 });
 
+// Test endpoint for Server Status Dashboard
+router.get('/', (req, res) => {
+  res.json({ 
+    message: 'Conversations API is working',
+    endpoint: '/api/conversations',
+    available_methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    status: 'Active'
+  });
+});
+
 // Get all conversations for admin
 router.get('/admin', auth, async (req, res) => {
   try {

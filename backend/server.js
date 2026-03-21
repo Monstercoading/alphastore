@@ -617,6 +617,11 @@ app.use('/api/discount-codes', discountCodesRouter);
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
 
+// ========== USERS API ==========
+
+const usersRouter = require('./routes/users');
+app.use('/api/users', usersRouter);
+
 // ========== GAMES API ==========
 
 const gamesRouter = require('./routes/games');
