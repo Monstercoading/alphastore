@@ -256,11 +256,12 @@ const Conversation: React.FC = () => {
                   ? (() => {
                       // Get customer name properly
                       let customerName = 'زائر';
-                      if (conversationData.conversation.customerId) {
-                        if (typeof conversationData.conversation.customerId === 'object') {
-                          customerName = `${conversationData.conversation.customerId.firstName || ''} ${conversationData.conversation.customerId.lastName || ''}`.trim() || 'زائر';
-                        } else if (typeof conversationData.conversation.customerId === 'string') {
-                          customerName = conversationData.conversation.customerId;
+                      const customerId = conversationData.conversation.customerId as any;
+                      if (customerId) {
+                        if (typeof customerId === 'object' && customerId !== null) {
+                          customerName = `${customerId.firstName || ''} ${customerId.lastName || ''}`.trim() || 'زائر';
+                        } else if (typeof customerId === 'string') {
+                          customerName = customerId;
                         }
                       } else if (conversationData.conversation.customerName) {
                         customerName = conversationData.conversation.customerName;
@@ -273,7 +274,8 @@ const Conversation: React.FC = () => {
               {state.user?.role === 'admin' && (
                 <p className="text-red-100 text-sm">
                   {(() => {
-                    let email = conversationData.conversation.customerId?.email || 
+                    const customerId = conversationData.conversation.customerId as any;
+                    let email = customerId?.email || 
                              conversationData.conversation.customerEmail || 
                              'unknown@example.com';
                     return email;
