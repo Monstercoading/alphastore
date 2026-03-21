@@ -42,11 +42,24 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     return senderType === (state.user?.role === 'admin' ? 'admin' : 'customer');
   };
 
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('ar-SA', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  const formatTime = (dateString: string | undefined) => {
+    if (!dateString) return 'الآن';
+    
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'الآن';
+      }
+      
+      return date.toLocaleTimeString('ar-SA', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'الآن';
+    }
   };
 
   const fetchConversations = async () => {
@@ -140,27 +153,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const archiveConversation = async (conversationId: string) => {
-    try {
-      await conversationAPI.closeConversation(conversationId);
-      showSuccessToast('تم أرشفة المحادثة');
-      fetchConversations();
-      if (selectedConversation === conversationId) {
-        setSelectedConversation(null);
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Error archiving conversation:', error);
-      showErrorToast('فشل أرشفة المحادثة');
-    }
-  };
-
   const sendImage = async (file: File) => {
     if (!selectedConversation) return;
 
     try {
       setUploading(true);
-      await conversationAPI.sendImageMessage(selectedConversation, file);
+      const message = await conversationAPI.sendImageMessage(selectedConversation, file);
+      
+      // Send via Socket.io for real-time update
+      socketService.sendMessage({
+        conversationId: selectedConversation,
+        message,
+        senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
+        senderId: state.user?.id || 'guest'
+      });
+      
+      setMessages(prev => [...prev, message]);
+      scrollToBottom();
       showSuccessToast('تم إرسال الصورة');
     } catch (error) {
       console.error('Error sending image:', error);
@@ -352,13 +361,6 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => archiveConversation(selectedConversation)}
-                      className="p-2 hover:bg-[#2a2d34] rounded-lg transition-colors text-gray-400 hover:text-red-400"
-                      title="أرشفة المحادثة"
-                    >
-                      <Archive className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
 
@@ -371,13 +373,26 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                     >
                       <div className={`max-w-xs lg:max-w-md ${isCurrentUser(message.senderType) ? 'order-1' : ''}`}>
                         <div
-                          className={`px-4 py-3 rounded-2xl shadow-sm ${
+                          className={`px-4 py-3 rounded-2xl ${
                             isCurrentUser(message.senderType)
                               ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
                               : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
                           }`}
                         >
-                          <p className="text-sm">{message.content}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium opacity-75">
+                              {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
+                            </span>
+                          </div>
+                          {message.imageUrl ? (
+                            <img
+                              src={message.imageUrl}
+                              alt="صورة"
+                              className="rounded-lg max-w-full h-auto"
+                            />
+                          ) : (
+                            <p className="text-sm">{message.content}</p>
+                          )}
                         </div>
                         <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
                           isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'

@@ -7,6 +7,7 @@ import { showSuccessToast, showErrorToast } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import Loading from '../components/Loading';
 import { API_URL } from '../config/api';
+import ChatModal from '../components/ChatModal';
 
 interface Order {
   _id: string;
@@ -35,34 +36,14 @@ const Cart: React.FC = () => {
   const { navigateWithDelay, isLoading: navLoading } = useNavigationWithDelay();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showChatModal, setShowChatModal] = useState(false);
 
-  const handleSupport = async (orderId: string) => {
+  const handleSupport = async () => {
     try {
-      console.log('Creating conversation for order:', orderId);
-      console.log('Order object:', orderId);
-      
-      if (!orderId) {
-        console.error('Order ID is undefined or null');
-        showErrorToast('معرف الطلب غير صالح');
-        return;
-      }
-      
-      const conversation = await conversationAPI.createConversation(orderId);
-      console.log('Conversation created:', conversation);
-      showSuccessToast('تم فتح المحادثة مع الدعم الفني');
-      navigate(`/conversation/${conversation._id}`);
+      setShowChatModal(true);
     } catch (error: any) {
-      console.error('Error creating conversation:', error);
-      let errorMessage = 'فشل فتح المحادثة. يرجى المحاولة مرة أخرى.';
-      
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-        console.error('Backend error:', error.response.data.error);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      showErrorToast(errorMessage);
+      console.error('Error opening chat:', error);
+      showErrorToast('فشل فتح المحادثة. يرجى المحاولة مرة أخرى.');
     }
   };
 
@@ -258,7 +239,7 @@ const Cart: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => handleSupport(order._id)}
+                            onClick={() => handleSupport()}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,6 +260,9 @@ const Cart: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Chat Modal */}
+      <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} />
     </div>
   );
 };
