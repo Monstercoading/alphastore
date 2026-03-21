@@ -18,15 +18,27 @@ interface Message {
 
 interface Conversation {
   _id: string;
+  orderId: {
+    _id: string;
+    totalAmount: number;
+    createdAt: string;
+    items?: Array<{
+      gameName?: string;
+      productName?: string;
+      name?: string;
+    }>;
+  };
+  customerId: string;
   customerName: string;
   customerEmail: string;
-  orderId: string;
   status: 'open' | 'closed';
   lastMessage: string;
   lastMessageTime: string;
-  unreadByAdmin: number;
   unreadByCustomer: number;
-  items: any[];
+  unreadByAdmin: number;
+  createdAt: string;
+  updatedAt: string;
+  productName?: string;
 }
 
 interface ChatModalProps {
@@ -56,12 +68,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const getProductName = (conversation: any) => {
-    if (conversation.items && conversation.items.length > 0) {
-      const firstItem = conversation.items[0];
+  const getProductName = (conversation: Conversation) => {
+    if (conversation.orderId?.items && conversation.orderId.items.length > 0) {
+      const firstItem = conversation.orderId.items[0];
       return firstItem.gameName || firstItem.productName || firstItem.name || 'منتج';
     }
-    return 'الدعم الفني';
+    return conversation.productName || 'الدعم الفني';
   };
 
   const isCurrentUser = (senderId: string) => {
@@ -227,7 +239,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       if (conversation && state.user?.role !== 'admin') {
         setTimeout(async () => {
           try {
-            await conversationAPI.createConversation(conversation.orderId?._id || conversationId);
+            await conversationAPI.createConversation(conversation.orderId._id);
             fetchConversations();
           } catch (error) {
             console.error('Error creating new conversation:', error);
