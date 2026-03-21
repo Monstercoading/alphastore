@@ -31,6 +31,13 @@ const Conversation: React.FC = () => {
   };
 
   useEffect(() => {
+    // Check if user is authenticated
+    if (!state.isAuthenticated) {
+      showErrorToast('يجب تسجيل الدخول للوصول إلى المحادثة');
+      navigate('/login');
+      return;
+    }
+
     if (id) {
       loadConversation();
       // Connect to Socket.io
@@ -114,16 +121,42 @@ const Conversation: React.FC = () => {
     try {
       setLoading(true);
       const data = await conversationAPI.getConversation(id);
-      setConversationData(data);
-      setMessages(data.messages);
       
-      // Mark messages as read for admin
-      if (state.isAuthenticated && state.user?.role === 'admin') {
+      // Check if user has access to this conversation
+      if (state.user?.role === 'admin') {
+        // Admin can access all conversations
+        setConversationData(data);
+        setMessages(data.messages);
         await markMessagesAsRead(id);
+      } else {
+        // Check if this conversation belongs to the current user
+        const customerEmail = data.conversation.customerId?.email || data.conversation.customerEmail;
+        const customerName = data.conversation.customerId?.firstName || data.conversation.customerName;
+        
+        if (customerEmail === state.user?.email || 
+            (customerName && `${data.conversation.customerId?.firstName} ${data.conversation.customerId?.lastName}` === `${state.user?.firstName} ${state.user?.lastName}`)) {
+          setConversationData(data);
+          setMessages(data.messages);
+        } else {
+          showErrorToast('غير مصرح لك بالوصول إلى هذه المحادثة');
+          navigate('/cart');
+          return;
+        }
       }
-    } catch (error) {
+      
+      scrollToBottom();
+    } catch (error: any) {
       console.error('Error loading conversation:', error);
-      showErrorToast('فشل تحميل المحادثة');
+      
+      // Handle specific authorization errors
+      if (error.response?.status === 403) {
+        showErrorToast('غير مصرح لك بالوصول إلى هذه المحادثة');
+      } else if (error.response?.status === 404) {
+        showErrorToast('المحادثة غير موجودة');
+      } else {
+        showErrorToast('فشل تحميل المحادثة');
+      }
+      
       navigate('/cart');
     } finally {
       setLoading(false);
@@ -132,6 +165,10 @@ const Conversation: React.FC = () => {
 
   const markMessagesAsRead = async (conversationId: string) => {
     try {
+      // Only admin can mark messages as read
+      if (state.user?.role !== 'admin') {
+        return;
+      }
       await conversationAPI.markAsRead(conversationId);
       console.log('Messages marked as read');
     } catch (error) {
@@ -141,6 +178,12 @@ const Conversation: React.FC = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !id) return;
+
+    // Check if user is authenticated
+    if (!state.isAuthenticated) {
+      showErrorToast('يجب تسجيل الدخول لإرسال الرسائل');
+      return;
+    }
 
     const senderType: 'admin' | 'customer' = state.user?.role === 'admin' ? 'admin' : 'customer';
     const messageContent = newMessage.trim();
@@ -154,9 +197,16 @@ const Conversation: React.FC = () => {
       // Don't add message to UI here - Socket.io will handle real-time update
       // This prevents duplicate messages
       scrollToBottom();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
-      showErrorToast('فشل إرسال الرسالة');
+      
+      // Handle authorization errors
+      if (error.response?.status === 403) {
+        showErrorToast('غير مصرح لك بإرسال رسائل في هذه المحادثة');
+      } else {
+        showErrorToast('فشل إرسال الرسالة');
+      }
+      
       // Restore message content on error
       setNewMessage(messageContent);
     } finally {
@@ -166,6 +216,12 @@ const Conversation: React.FC = () => {
 
   const sendImage = async (file: File) => {
     if (!id) return;
+
+    // Check if user is authenticated
+    if (!state.isAuthenticated) {
+      showErrorToast('يجب تسجيل الدخول لإرسال الصور');
+      return;
+    }
 
     try {
       setUploading(true);
