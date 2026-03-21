@@ -48,6 +48,9 @@ const Cart: React.FC = () => {
         const conversation = await conversationAPI.createConversation(orderId);
         console.log('Conversation created:', conversation);
         showSuccessToast('تم فتح المحادثة مع الدعم الفني');
+        
+        // Store the conversation ID to be selected when modal opens
+        localStorage.setItem('newConversationId', conversation._id);
         setShowChatModal(true);
       } else {
         // Just open the chat modal for general support

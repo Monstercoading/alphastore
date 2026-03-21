@@ -233,6 +233,19 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       fetchConversations();
+      
+      // Check if there's a new conversation to select
+      const newConversationId = localStorage.getItem('newConversationId');
+      if (newConversationId) {
+        // Clear it immediately
+        localStorage.removeItem('newConversationId');
+        
+        // Wait a bit for conversations to load, then select the new one
+        setTimeout(() => {
+          setSelectedConversation(newConversationId);
+          fetchMessages(newConversationId);
+        }, 1000);
+      }
     }
   }, [isOpen]);
 
