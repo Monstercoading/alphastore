@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { STATIC_PRODUCTS, getStaticProductById } from '../data/products-data';
 import { API_URL, UPLOADS_URL } from '../config/api';
+import { discountCodeAPI } from '../services/discountCodeAPI';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface Game {
   _id: string;
@@ -13,6 +15,7 @@ interface Game {
   discount?: number;
   platform: string;
   region: string;
+  category?: string;
   images: string[];
   availability: string;
   accountDetails?: {
@@ -30,6 +33,13 @@ const GameDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Discount code states
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountResult, setDiscountResult] = useState<any>(null);
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [finalPrice, setFinalPrice] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -75,95 +85,6 @@ const GameDetail: React.FC = () => {
     }
   };
 
-  const handleOrder = async () => {
-    if (!state.isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    if (!game) return;
-
-    try {
-      setOrdering(true);
-
-      // Calculate final price with discount
-      const finalPrice = game.discount
-        ? game.price - (game.price * game.discount / 100)
-        : game.price;
-
-      // Create order object
-      const order = {
-        user: {
-          email: state.user?.email || '',
-          firstName: state.user?.firstName || '',
-          lastName: state.user?.lastName || '',
-        },
-        games: [{
-          game: {
-            _id: game._id,
-            title: game.title,
-            platform: game.platform,
-            price: game.price,
-            images: game.images,
-          },
-          price: finalPrice,
-        }],
-        totalAmount: finalPrice,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-
-      try {
-        // Send order to server automatically
-        const response = await fetch(`${API_URL}/orders`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(order),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create order');
-        }
-
-        const createdOrder = await response.json();
-
-        // Save to localStorage for backup
-        const existingOrders = localStorage.getItem('alpha_orders');
-        const orders = existingOrders ? JSON.parse(existingOrders) : [];
-        orders.push(createdOrder);
-        localStorage.setItem('alpha_orders', JSON.stringify(orders));
-
-        // Also save to user-specific orders for quick access
-        const userOrdersKey = `orders_${state.user?.email}`;
-        const existingUserOrders = localStorage.getItem(userOrdersKey);
-        const userOrders = existingUserOrders ? JSON.parse(existingUserOrders) : [];
-        userOrders.push(createdOrder);
-        localStorage.setItem(userOrdersKey, JSON.stringify(userOrders));
-
-        // Show success and redirect
-        alert('تم إرسال الطلب بنجاح! سيتم مراجعته من قبل الإدارة.');
-        navigate('/cart');
-      } catch (apiError) {
-        console.error('API Error:', apiError);
-        alert('فشل إرسال الطلب للسيرفر. يرجى المحاولة مرة أخرى.');
-        // Fallback to localStorage if API fails
-        const existingOrders = localStorage.getItem('alpha_orders');
-        const orders = existingOrders ? JSON.parse(existingOrders) : [];
-        orders.push(order);
-        localStorage.setItem('alpha_orders', JSON.stringify(orders));
-        alert('تم حفظ الطلب محلياً. سيتم إرساله لاحقاً.');
-        navigate('/cart');
-      }
-    } catch (error: any) {
-      alert('فشل إنشاء الطلب');
-      console.error('Order error:', error);
-    } finally {
-      setOrdering(false);
-    }
-  };
-
   const getImageUrl = (image: string) => {
     if (image.startsWith('data:')) {
       return image;
@@ -188,6 +109,119 @@ const GameDetail: React.FC = () => {
   const calculateDiscountedPrice = (price: number, discount?: number) => {
     if (!discount) return price;
     return price - (price * discount / 100);
+  };
+
+  const validateDiscountCode = async () => {
+    if (!discountCode.trim() || !game) return;
+
+    try {
+      setValidatingDiscount(true);
+      const result = await discountCodeAPI.validateDiscountCode(
+        discountCode.trim(),
+        game.price,
+        game._id,
+        game.category
+      );
+      
+      setDiscountResult(result);
+      setFinalPrice(result.finalAmount);
+      showSuccessToast(`تم تطبيق الخصم بنجاح! وفرت ${result.discountAmount}$`);
+    } catch (error: any) {
+      setDiscountResult(null);
+      setFinalPrice(null);
+      showErrorToast(error.message || 'فشل تطبيق كود الخصم');
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  const removeDiscountCode = () => {
+    setDiscountCode('');
+    setDiscountResult(null);
+    setFinalPrice(null);
+    setShowDiscountInput(false);
+  };
+
+  const handleOrder = async () => {
+    if (!game) return;
+    
+    // Check if user is logged in
+    if (!state.isAuthenticated || !state.user) {
+      showErrorToast('يجب تسجيل الدخول لإتمام الطلب');
+      navigate('/login');
+      return;
+    }
+
+    setOrdering(true);
+    
+    try {
+      const order = {
+        user: {
+          email: state.user.email,
+          firstName: state.user.firstName,
+          lastName: state.user.lastName
+        },
+        games: [{
+          game: {
+            _id: game._id,
+            title: game.title,
+            price: finalPrice || game.price,
+            platform: game.platform,
+            region: game.region,
+            images: game.images
+          },
+          price: finalPrice || game.price
+        }],
+        totalAmount: finalPrice || game.price,
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        discountCode: discountResult ? discountResult.code : undefined,
+        originalAmount: game.price,
+        discountAmount: discountResult ? discountResult.discountAmount : undefined
+      };
+
+      // Try to save to server first
+      try {
+        const response = await fetch(`${API_URL}/orders`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(order)
+        });
+
+        if (response.ok) {
+          const createdOrder = await response.json();
+          
+          // Also save to localStorage for backup
+          const userOrdersKey = `orders_${state.user?.email}`;
+          const existingUserOrders = localStorage.getItem(userOrdersKey);
+          const userOrders = existingUserOrders ? JSON.parse(existingUserOrders) : [];
+          userOrders.push(createdOrder);
+          localStorage.setItem(userOrdersKey, JSON.stringify(userOrders));
+
+          showSuccessToast('تم إرسال الطلب بنجاح! سيتم مراجعته من قبل الإدارة.');
+          navigate('/cart');
+        } else {
+          throw new Error('Failed to save to server');
+        }
+      } catch (apiError) {
+        console.error('API Error:', apiError);
+        // Fallback to localStorage
+        const existingOrders = localStorage.getItem('alpha_orders');
+        const orders = existingOrders ? JSON.parse(existingOrders) : [];
+        orders.push(order);
+        localStorage.setItem('alpha_orders', JSON.stringify(orders));
+        showSuccessToast('تم حفظ الطلب محلياً. سيتم إرساله لاحقاً.');
+        navigate('/cart');
+      }
+    } catch (error: any) {
+      showErrorToast('فشل إنشاء الطلب');
+      console.error('Order error:', error);
+    } finally {
+      setOrdering(false);
+    }
   };
 
   if (loading) {
@@ -427,7 +461,70 @@ const GameDetail: React.FC = () => {
                     <span className="text-4xl font-bold text-green-400">${discountedPrice.toFixed(2)}</span>
                   </div>
                 ) : (
-                  <span className="text-4xl font-bold text-green-400">${game.price.toFixed(2)}</span>
+                  <div className="space-y-2">
+                    <span className="text-4xl font-bold text-green-400">
+                      ${finalPrice !== null ? finalPrice.toFixed(2) : game.price.toFixed(2)}
+                    </span>
+                    {finalPrice !== null && finalPrice < game.price && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 line-through text-lg">${game.price.toFixed(2)}</span>
+                        <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm font-bold">
+                          خصم {discountResult?.discountPercentage}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Discount Code Section */}
+              <div className="mb-6 pb-6 border-b border-gray-800">
+                {!showDiscountInput ? (
+                  <button
+                    onClick={() => setShowDiscountInput(true)}
+                    className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    استخدام كود خصم
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                        placeholder="أدخل كود الخصم"
+                        className="flex-1 bg-[#0a0a0a] text-white px-4 py-3 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                        disabled={validatingDiscount}
+                      />
+                      <button
+                        onClick={validateDiscountCode}
+                        disabled={validatingDiscount || !discountCode.trim()}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        {validatingDiscount ? 'تطبيق...' : 'تطبيق'}
+                      </button>
+                    </div>
+                    {discountResult && (
+                      <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
+                        <div className="flex items-center justify-between text-green-400">
+                          <span className="text-sm">تم تطبيق الخصم بنجاح</span>
+                          <button
+                            onClick={removeDiscountCode}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            إزالة
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-300 mt-1">
+                          وفرت {discountResult.discountAmount}$ ({discountResult.discountPercentage}%)
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
