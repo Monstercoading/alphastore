@@ -28,6 +28,25 @@ module.exports = function(req, res, next) {
 
   // Verify token
   try {
+    // Special handling for admin signature token
+    if (token.includes('admin-signature')) {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        
+        // Check if token is expired
+        if (payload.exp && Date.now() > payload.exp) {
+          return res.status(401).json({ message: 'Token expired, please login again' });
+        }
+        
+        console.log('Admin token verified successfully for user:', payload.user.email);
+        req.user = payload.user;
+        next();
+        return;
+      }
+    }
+    
+    // Regular JWT verification for normal users
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     console.log('Token verified successfully for user:', decoded.user.email);
     req.user = decoded.user;

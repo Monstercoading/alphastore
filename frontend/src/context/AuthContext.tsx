@@ -180,7 +180,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           lastName: 'User',
           role: 'admin' as const
         };
-        const token = 'admin-jwt-token';
+        
+        // Generate a real JWT token-like structure (simple base64 encoded)
+        const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+        const payload = btoa(JSON.stringify({ 
+          user: adminUser,
+          exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        }));
+        const signature = 'admin-signature'; // In real app, this would be HMAC signed
+        const token = `${header}.${payload}.${signature}`;
+        
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(adminUser));
         

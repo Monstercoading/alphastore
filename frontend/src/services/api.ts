@@ -27,13 +27,10 @@ api.interceptors.response.use(
       console.log('Current token:', localStorage.getItem('token'));
       console.log('Current user:', localStorage.getItem('user'));
       
-      // Temporarily disable auto-logout to debug
-      // localStorage.removeItem('token');
-      // localStorage.removeItem('user');
-      // window.location.href = '/login';
-      
-      // Just show error for now
-      console.error('401 Error - Token may be invalid or expired');
+      // Re-enable auto-logout
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
