@@ -24,6 +24,11 @@ export interface Conversation {
     _id: string;
     totalAmount: number;
     createdAt: string;
+    items?: Array<{
+      gameName?: string;
+      productName?: string;
+      name?: string;
+    }>;
   };
   customerId: string;
   customerName: string;
@@ -35,6 +40,7 @@ export interface Conversation {
   unreadByAdmin: number;
   createdAt: string;
   updatedAt: string;
+  productName?: string;
 }
 
 export interface Message {

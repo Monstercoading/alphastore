@@ -38,6 +38,20 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const getProductName = (conversation: any) => {
+    // Try to get product name from different possible sources
+    if (conversation.productName) {
+      return conversation.productName;
+    }
+    
+    if (conversation.orderId?.items?.length > 0) {
+      const firstItem = conversation.orderId.items[0];
+      return firstItem.gameName || firstItem.productName || firstItem.name || 'منتج';
+    }
+    
+    return 'الدعم الفني';
+  };
+
   const isCurrentUser = (senderId: string) => {
     return senderId === state.user?.id;
   };
@@ -330,54 +344,138 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
               ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
-                    <MessageCircle className="w-12 h-12 text-gray-600" />
-                    {activeTab === 'active' ? 'لا توجد محادثات نشطة' : 'لا توجد محادثات مؤرشفة'}
-                  </div>
-                </div>
-              ) : (
-                filteredConversations.map((conversation) => (
-                  <div
-                    key={conversation._id}
-                    onClick={() => setSelectedConversation(conversation._id)}
-                    className={`p-4 mb-2 bg-[#1a1d24] rounded-lg cursor-pointer transition-all hover:shadow-md border ${
-                      selectedConversation === conversation._id
-                        ? 'bg-red-900/30 border-red-600 shadow-md'
-                        : 'border-gray-700 hover:border-red-600'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-white truncate">
-                            {conversation.customerName}
-                          </h3>
-                          <span className="text-xs text-gray-400 mr-2">
-                            {formatTime(conversation.lastMessageTime)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-400 truncate mt-1">
-                          {conversation.lastMessage}
-                        </p>
-                        {conversation.productTitle && (
-                          <p className="text-xs text-red-400 truncate mt-1">
-                            🎮 {conversation.productTitle}
-                          </p>
-                        )}
-                      </div>
-                      {conversation.unreadCount > 0 && (
-                        <div className="ml-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {conversation.unreadCount}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+
+  const handleTyping = (data: any) => {
+    // Handle typing indicator
+  };
+
+  socketService.on('newConversationMessage', handleNewMessage);
+  socketService.on('userTyping', handleTyping);
+
+  return () => {
+    socketService.off('newConversationMessage', handleNewMessage);
+    socketService.off('userTyping', handleTyping);
+  };
+}, [isOpen, selectedConversation]);
+
+useEffect(() => {
+  if (isOpen) {
+    fetchConversations();
+    
+    // Check if there's a new conversation to select
+    const newConversationId = localStorage.getItem('newConversationId');
+    if (newConversationId) {
+      // Clear it immediately
+      localStorage.removeItem('newConversationId');
+      
+      // Wait a bit for conversations to load, then select the new one
+      setTimeout(() => {
+        setSelectedConversation(newConversationId);
+        fetchMessages(newConversationId);
+      }, 1000);
+    }
+  }
+}, [isOpen]);
+
+useEffect(() => {
+  if (selectedConversation) {
+    fetchMessages(selectedConversation);
+  }
+}, [selectedConversation]);
+
+useEffect(() => {
+  scrollToBottom();
+}, [messages]);
+
+const filteredConversations = conversations.filter(conv => conv.status === activeTab);
+
+if (!isOpen) return null;
+
+return (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-[#1a1d24] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-gray-800">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-white bg-opacity-20 p-3 rounded-full">
+            <MessageCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">المحادثات</h2>
+            <p className="text-red-100 text-sm">{state.user?.role === 'admin' ? 'لوحة تحكم المحادثات' : 'محادثاتي'}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded-full transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Conversations List */}
+        <div className="w-[35%] border-r border-gray-800 flex flex-col bg-[#0a0a0a]">
+          {/* Tabs */}
+          <div className="flex bg-[#1a1d24] border-b border-gray-800 m-3 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                activeTab === 'active'
+                  ? 'bg-red-600 text-white'
+                  : 'text-gray-400 hover:bg-[#2a2d34]'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                المحادثات النشطة
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('archived')}
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                activeTab === 'archived'
+                  ? 'bg-red-600 text-white'
+                  : 'text-gray-400 hover:bg-[#2a2d34]'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Archive className="w-4 h-4" />
+                الأرشيف
+              </div>
+            </button>
           </div>
 
-          {/* Right Side - Messages */}
-          <div className="w-[65%] flex flex-col bg-[#0a0a0a]">
+          {/* Conversations List */}
+          <div className="flex-1 overflow-y-auto px-3 pb-3">
+            {loading ? (
+              <div className="p-4 text-center text-gray-400">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                  جاري التحميل...
+                </div>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                <div className="flex flex-col items-center gap-2">
+                  <MessageCircle className="w-12 h-12 text-gray-600" />
+                  {activeTab === 'active' ? 'لا توجد محادثات نشطة' : 'لا توجد محادثات مؤرشفة'}
+                </div>
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div
+                  key={conversation._id}
+                  onClick={() => {
+                    setSelectedConversation(conversation._id);
+                    fetchMessages(conversation._id);
+                  }}
+                  className={`p-4 border-b border-gray-800 cursor-pointer transition-colors ${
+                    selectedConversation === conversation._id
+                      ? 'bg-[#1a1d24] border-l-4 border-l-red-600'
+                      : 'hover:bg-[#2a2d34]'
+                  }`}
+                >
             {selectedConversation ? (
               <>
                 {/* Conversation Header */}
@@ -391,10 +489,14 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">
-                          {conversations.find(c => c._id === selectedConversation)?.customerName}
+                          {(() => {
+                            const conversation = conversations.find(c => c._id === selectedConversation);
+                            const productName = conversation ? getProductName(conversation) : 'الدعم الفني';
+                            return `${productName} Support`;
+                          })()}
                         </h3>
                         <p className="text-sm text-gray-400">
-                          {conversations.find(c => c._id === selectedConversation)?.customerEmail}
+                          {conversations.find(c => c._id === selectedConversation)?.customerName}
                         </p>
                       </div>
                     </div>
