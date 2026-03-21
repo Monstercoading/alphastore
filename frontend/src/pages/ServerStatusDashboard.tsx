@@ -16,18 +16,21 @@ interface ServerStatus {
     status: 'pending' | 'success' | 'error';
     responseTime?: number;
     error?: string;
+    message?: string;
   };
   socket: {
     url: string;
     status: 'pending' | 'success' | 'error';
     connected: boolean;
     error?: string;
+    message?: string;
   };
   apis: TestResult[];
   frontend: {
     url: string;
     status: 'pending' | 'success' | 'error';
     error?: string;
+    message?: string;
   };
 }
 
