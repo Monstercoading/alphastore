@@ -35,8 +35,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [messageStatuses, setMessageStatuses] = useState<Record<string, 'sending' | 'sent' | 'delivered' | 'read'>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,9 +68,33 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     if (!dateString) return 'الآن';
     
     try {
-      const date = new Date(dateString);
+      // Handle different date formats
+      let date: Date;
+      
+      // If it's already a Date object
+      if (dateString instanceof Date) {
+        date = dateString;
+      }
+      // If it's a string, try to parse it
+      else if (typeof dateString === 'string') {
+        // Handle ISO strings and other formats
+        date = new Date(dateString);
+        
+        // If invalid date, try to handle MongoDB date format
+        if (isNaN(date.getTime())) {
+          // Try to extract date from string if it's in a weird format
+          const dateMatch = dateString.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+          if (dateMatch) {
+            date = new Date(dateMatch[0]);
+          }
+        }
+      } else {
+        date = new Date();
+      }
+      
       // Check if date is valid
       if (isNaN(date.getTime())) {
+        console.warn('Invalid date detected:', dateString);
         return 'الآن';
       }
       
@@ -75,7 +103,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         minute: '2-digit'
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
+      console.error('Error formatting date:', error, 'Date string:', dateString);
       return 'الآن';
     }
   };
@@ -106,15 +134,47 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    // Emit typing event
+    if (selectedConversation && e.target.value.length > 0) {
+      socketService.emitTyping(selectedConversation, {
+        name: state.user?.firstName + ' ' + state.user?.lastName,
+        id: state.user?.id
+      });
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set timeout to emit stop typing
+      typingTimeoutRef.current = setTimeout(() => {
+        socketService.emitStopTyping(selectedConversation, {
+          name: state.user?.firstName + ' ' + state.user?.lastName,
+          id: state.user?.id
+        });
+      }, 1000);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     const messageContent = newMessage.trim();
+    const tempId = Date.now().toString();
     setNewMessage('');
     setSending(true);
+    
+    // Set initial status as sending
+    setMessageStatuses(prev => ({ ...prev, [tempId]: 'sending' }));
 
     try {
       const message = await conversationAPI.sendMessage(selectedConversation, messageContent);
+      
+      // Update status to sent
+      setMessageStatuses(prev => ({ ...prev, [tempId]: 'sent', [message._id]: 'delivered' }));
       
       // Send via Socket.io for real-time update
       socketService.sendMessage({
@@ -124,11 +184,22 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         senderId: state.user?.id || 'guest'
       });
       
+      // Update to delivered after a short delay
+      setTimeout(() => {
+        setMessageStatuses(prev => ({ ...prev, [message._id]: 'delivered' }));
+      }, 500);
+      
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       showErrorToast('فشل إرسال الرسالة');
       setNewMessage(messageContent);
+      // Remove failed message status
+      setMessageStatuses(prev => {
+        const newStatuses = { ...prev };
+        delete newStatuses[tempId];
+        return newStatuses;
+      });
     } finally {
       setSending(false);
     }
@@ -177,9 +248,31 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     try {
       await conversationAPI.closeConversation(conversationId);
       showSuccessToast('تم إغلاق المحادثة');
+      
+      // Get the conversation details before clearing
+      const conversation = conversations.find(c => c._id === conversationId);
+      
       fetchConversations();
       setSelectedConversation(null);
       setMessages([]);
+      
+      // If admin is closing and there's an order, create a new conversation for future support
+      if (state.user?.role === 'admin' && conversation?.orderId) {
+        try {
+          // Wait a bit then create new conversation for the same order
+          setTimeout(async () => {
+            try {
+              const newConversation = await conversationAPI.createConversation(conversation.orderId._id);
+              console.log('New conversation created for future support:', newConversation);
+              fetchConversations();
+            } catch (error) {
+              console.error('Error creating new conversation:', error);
+            }
+          }, 1000);
+        } catch (error) {
+          console.error('Error in auto-renewal process:', error);
+        }
+      }
     } catch (error) {
       console.error('Error closing conversation:', error);
       showErrorToast('فشل إغلاق المحادثة');
@@ -210,6 +303,13 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       fetchMessages(selectedConversation);
       // Mark conversation notifications as read
       markConversationAsRead(selectedConversation);
+      
+      // Mark messages as read in backend
+      if (state.user?.role === 'admin') {
+        conversationAPI.markAsRead(selectedConversation).catch(err => {
+          console.error('Error marking messages as read:', err);
+        });
+      }
     }
   }, [selectedConversation, markConversationAsRead]);
 
@@ -219,6 +319,9 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Connect to Socket.io when modal opens
+    socketService.connect();
 
     const handleNewMessage = (data: any) => {
       console.log('New message received:', data);
@@ -237,17 +340,101 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleTyping = (data: any) => {
-      // Handle typing indicator
+      console.log('User typing:', data);
+      if (data.conversationId === selectedConversation && data.user?.name !== state.user?.firstName + ' ' + state.user?.lastName) {
+        setTypingUser(data.user?.name || 'شخص ما');
+        setIsTyping(true);
+        
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        
+        // Set new timeout to hide typing indicator after 3 seconds
+        typingTimeoutRef.current = setTimeout(() => {
+          setIsTyping(false);
+          setTypingUser(null);
+        }, 3000);
+      }
     };
 
-    socketService.on('newConversationMessage', handleNewMessage);
-    socketService.on('userTyping', handleTyping);
+    const handleStopTyping = (data: any) => {
+      if (data.conversationId === selectedConversation) {
+        setIsTyping(false);
+        setTypingUser(null);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+      }
+    };
+
+    const handleMessagesRead = (data: any) => {
+      console.log('Messages marked as read:', data);
+      if (data.conversationId === selectedConversation) {
+        setMessages(prev => prev.map(msg => ({ ...msg, read: true, isRead: true })));
+      }
+    };
+
+    const handleConversationClosed = (data: any) => {
+      console.log('Conversation closed:', data);
+      if (data.conversationId === selectedConversation) {
+        // Show notification that conversation was closed
+        showErrorToast('تم إغلاق المحادثة');
+        setSelectedConversation(null);
+        setMessages([]);
+        fetchConversations();
+      }
+    };
+
+    // Set up event listeners
+    socketService.onNewMessage(handleNewMessage);
+    socketService.onUserTyping(handleTyping);
+    socketService.on('userStopTyping', handleStopTyping);
+    socketService.on('messagesRead', handleMessagesRead);
+    socketService.on('conversationClosed', handleConversationClosed);
 
     return () => {
       socketService.off('newConversationMessage', handleNewMessage);
       socketService.off('userTyping', handleTyping);
+      socketService.off('userStopTyping', handleStopTyping);
+      socketService.off('messagesRead', handleMessagesRead);
+      socketService.off('conversationClosed', handleConversationClosed);
+      
+      // Clear typing timeout on cleanup
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
   }, [isOpen, selectedConversation]);
+
+  // Join/leave conversation room when selectedConversation changes
+  useEffect(() => {
+    if (selectedConversation) {
+      socketService.joinConversation(selectedConversation);
+      return () => {
+        socketService.leaveConversation(selectedConversation);
+      };
+    }
+  }, [selectedConversation]);
+
+  const getMessageStatus = (messageId: string) => {
+    return messageStatuses[messageId] || 'sent';
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'sending':
+        return <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>;
+      case 'sent':
+        return <Check className="w-3 h-3 text-gray-400" />;
+      case 'delivered':
+        return <CheckCheck className="w-3 h-3 text-blue-400" />;
+      case 'read':
+        return <CheckCheck className="w-3 h-3 text-red-400" />;
+      default:
+        return null;
+    }
+  };
 
   const filteredConversations = conversations.filter(conv => conv.status === activeTab);
 
@@ -461,7 +648,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                           <span>{formatTime(message.createdAt)}</span>
                           {isMyMessage && (
                             <span className="text-red-400">
-                              {message.read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
+                              {getStatusIcon(getMessageStatus(message._id))}
                             </span>
                           )}
                         </div>
@@ -469,6 +656,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   );
                 })}
+                
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <div className="flex justify-start mb-4">
+                    <div className="bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700 px-4 py-3 rounded-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <span className="text-sm text-gray-400">{typingUser} يكتب...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div ref={messagesEndRef} />
               </div>
 
@@ -493,7 +697,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="اكتب رسالتك..."
                     className="flex-1 bg-[#0a0a0a] text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-red-500"

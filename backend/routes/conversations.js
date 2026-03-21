@@ -91,6 +91,27 @@ router.get('/customer', auth, async (req, res) => {
   }
 });
 
+// Get messages for a conversation
+router.get('/:id/messages', async (req, res) => {
+  try {
+    console.log('Fetching messages for conversation:', req.params.id);
+    
+    const conversation = await Conversation.findById(req.params.id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const messages = await Message.find({ conversationId: req.params.id })
+      .sort({ createdAt: 1 });
+
+    console.log('Messages found:', messages.length);
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages: ' + error.message });
+  }
+});
+
 // Get single conversation with messages
 router.get('/:id', async (req, res) => {
   try {
@@ -186,6 +207,12 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    // Check if conversation is closed
+    if (conversation.status === 'closed') {
+      console.log('Attempt to send message to closed conversation:', conversationId);
+      return res.status(403).json({ error: 'Cannot send messages to closed conversation' });
+    }
+
     // Try to get user from token if available
     let user = null;
     const token = req.header('Authorization')?.replace('Bearer ', '') || req.header('x-auth-token');
@@ -256,14 +283,6 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
     const reqIo = req.app.get('io');
     if (reqIo) {
       reqIo.to(conversationId).emit('newMessage', {
-        conversationId,
-        message,
-        senderType,
-        timestamp: new Date()
-      });
-
-      // Also emit receiveMessage for frontend compatibility
-      reqIo.to(conversationId).emit('receiveMessage', {
         conversationId,
         message,
         senderType,
