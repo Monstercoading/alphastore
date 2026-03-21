@@ -125,8 +125,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const response = await conversationAPI.getConversations();
-      setConversations(response.data);
+      const response = state.user?.role === 'admin' 
+        ? await conversationAPI.getAdminConversations()
+        : await conversationAPI.getCustomerConversations();
+      setConversations(response);
     } catch (error) {
       console.error('Error fetching conversations:', error);
       showErrorToast('فشل في تحميل المحادثات');
@@ -138,7 +140,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const fetchMessages = async (conversationId: string) => {
     try {
       const response = await conversationAPI.getMessages(conversationId);
-      setMessages(response.data);
+      setMessages(response);
       
       if (state.user?.role === 'admin') {
         await conversationAPI.markAsRead(conversationId);
@@ -198,7 +200,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
     try {
       setUploading(true);
-      const message = await conversationAPI.sendImage(selectedConversation, file);
+      const message = await conversationAPI.sendImageMessage(selectedConversation, file);
       
       socketService.sendMessage({
         conversationId: selectedConversation,
@@ -225,12 +227,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       if (conversation && state.user?.role !== 'admin') {
         setTimeout(async () => {
           try {
-            await conversationAPI.createConversation({
-              customerName: conversation.customerName,
-              customerEmail: conversation.customerEmail,
-              orderId: conversation.orderId,
-              items: conversation.items
-            });
+            await conversationAPI.createConversation(conversation.orderId?._id || conversationId);
             fetchConversations();
           } catch (error) {
             console.error('Error creating new conversation:', error);
