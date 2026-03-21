@@ -59,12 +59,26 @@ const Conversation: React.FC = () => {
       const data = await conversationAPI.getConversation(id);
       setConversationData(data);
       setMessages(data.messages);
+      
+      // Mark messages as read for admin
+      if (state.isAuthenticated && state.user?.role === 'admin') {
+        await markMessagesAsRead(id);
+      }
     } catch (error) {
       console.error('Error loading conversation:', error);
       showErrorToast('فشل تحميل المحادثة');
       navigate('/cart');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markMessagesAsRead = async (conversationId: string) => {
+    try {
+      await conversationAPI.markAsRead(conversationId);
+      console.log('Messages marked as read');
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
   };
 

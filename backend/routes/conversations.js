@@ -226,6 +226,37 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
   }
 });
 
+// Mark messages as read (for admin)
+router.put('/:id/read', auth, async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    
+    // Only admin can mark messages as read
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Update conversation unread count
+    await Conversation.findByIdAndUpdate(conversationId, { unreadByAdmin: 0 });
+
+    // Mark all customer messages as read
+    await Message.updateMany(
+      { 
+        conversationId,
+        senderType: 'customer',
+        read: false
+      },
+      { read: true }
+    );
+
+    console.log('Messages marked as read for conversation:', conversationId);
+    res.json({ message: 'Messages marked as read' });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+});
+
 // Close conversation
 router.put('/:id/close', auth, async (req, res) => {
   try {

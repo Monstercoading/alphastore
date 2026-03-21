@@ -261,15 +261,24 @@ const AdminDashboard: React.FC = () => {
 
   // Load conversations when messages tab is active
   useEffect(() => {
+    console.log('Messages tab effect:', {
+      isAuthenticated: state.isAuthenticated,
+      userRole: state.user?.role,
+      activeTab
+    });
+    
     if (state.isAuthenticated && state.user?.role === 'admin' && activeTab === 'messages') {
+      console.log('Starting conversation polling...');
       loadConversations();
       
       // Set up polling for new conversations every 3 seconds
       const pollInterval = setInterval(() => {
+        console.log('Polling conversations...');
         loadConversations();
       }, 3000);
 
       return () => {
+        console.log('Cleaning up conversation polling');
         clearInterval(pollInterval);
       };
     }

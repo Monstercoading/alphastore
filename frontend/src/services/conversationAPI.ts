@@ -128,6 +128,16 @@ class ConversationAPI {
     }
   }
 
+  // Mark messages as read (for admin)
+  async markAsRead(conversationId: string): Promise<void> {
+    try {
+      await api.put(`/conversations/${conversationId}/read`);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      throw error;
+    }
+  }
+
   // Close conversation
   async closeConversation(conversationId: string): Promise<void> {
     try {
