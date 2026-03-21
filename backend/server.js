@@ -449,7 +449,7 @@ app.post('/api/auth/google', async (req, res) => {
     let tokens;
     try {
       ({ tokens } = await oauth2Client.getToken(code));
-    } catch (error: any) {
+    } catch (error) {
       console.error('Google OAuth token exchange error:', error);
       
       if (error.message === 'invalid_grant') {
