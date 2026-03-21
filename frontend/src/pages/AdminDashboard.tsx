@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { gamesAPI, ordersAPI } from '../services/api';
 import { conversationAPI, Conversation } from '../services/conversationAPI';
+import { discountCodeAPI, DiscountCode } from '../services/discountCodeAPI';
 import { playNotificationSound, playMessageSound } from '../utils/notificationSound';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { STATIC_PRODUCTS } from '../data/products-data';
@@ -47,12 +48,16 @@ interface Order {
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
-  const [activeTab, setActiveTab] = useState<'games' | 'orders' | 'messages'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'orders' | 'messages' | 'discounts'>('games');
   const [games, setGames] = useState<Game[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
+  const [availableGames, setAvailableGames] = useState<any[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [showAddGameForm, setShowAddGameForm] = useState(false);
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const [editingDiscount, setEditingDiscount] = useState<DiscountCode | null>(null);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [lastKnownOrderCount, setLastKnownOrderCount] = useState(0);
   const [newOrdersAlert, setNewOrdersAlert] = useState<string[]>([]);
@@ -68,6 +73,21 @@ const AdminDashboard: React.FC = () => {
     region: 'Global',
     availability: 'available',
     images: [] as string[]
+  });
+
+  const [discountForm, setDiscountForm] = useState({
+    code: '',
+    description: '',
+    discountType: 'percentage' as 'percentage' | 'fixed',
+    discountValue: '',
+    minimumAmount: '',
+    maxDiscountAmount: '',
+    applicableProducts: [] as string[],
+    applicableCategories: [] as string[],
+    usageLimit: '',
+    userUsageLimit: '1',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   });
 
   // Load games and orders from localStorage on mount
@@ -230,6 +250,110 @@ const AdminDashboard: React.FC = () => {
       clearInterval(pollInterval);
     };
   }, [activeTab, lastKnownOrderCount]);
+
+  // Load discount codes and available games
+  useEffect(() => {
+    if (state.isAuthenticated && state.user?.role === 'admin') {
+      loadDiscountCodes();
+      loadAvailableGames();
+    }
+  }, [state.isAuthenticated]);
+
+  const loadDiscountCodes = async () => {
+    try {
+      const codes = await discountCodeAPI.getDiscountCodes();
+      setDiscountCodes(codes);
+    } catch (error) {
+      console.error('Error loading discount codes:', error);
+    }
+  };
+
+  const loadAvailableGames = async () => {
+    try {
+      const games = await discountCodeAPI.getAvailableProducts();
+      setAvailableGames(games);
+    } catch (error) {
+      console.error('Error loading available games:', error);
+    }
+  };
+
+  const handleSaveDiscount = async () => {
+    try {
+      const discountData = {
+        ...discountForm,
+        discountValue: parseFloat(discountForm.discountValue),
+        minimumAmount: discountForm.minimumAmount ? parseFloat(discountForm.minimumAmount) : undefined,
+        maxDiscountAmount: discountForm.maxDiscountAmount ? parseFloat(discountForm.maxDiscountAmount) : undefined,
+        usageLimit: discountForm.usageLimit ? parseInt(discountForm.usageLimit) : undefined,
+        userUsageLimit: parseInt(discountForm.userUsageLimit)
+      };
+
+      if (editingDiscount) {
+        await discountCodeAPI.updateDiscountCode(editingDiscount._id, discountData);
+        showSuccessToast('تم تحديث كود الخصم بنجاح');
+      } else {
+        await discountCodeAPI.createDiscountCode(discountData);
+        showSuccessToast('تم إضافة كود الخصم بنجاح');
+      }
+
+      setShowDiscountForm(false);
+      setEditingDiscount(null);
+      resetDiscountForm();
+      loadDiscountCodes();
+    } catch (error) {
+      console.error('Error saving discount code:', error);
+      showErrorToast('فشل حفظ كود الخصم');
+    }
+  };
+
+  const handleEditDiscount = (discount: DiscountCode) => {
+    setEditingDiscount(discount);
+    setDiscountForm({
+      code: discount.code,
+      description: discount.description,
+      discountType: discount.discountType,
+      discountValue: discount.discountValue.toString(),
+      minimumAmount: discount.minimumAmount.toString(),
+      maxDiscountAmount: discount.maxDiscountAmount?.toString() || '',
+      applicableProducts: discount.applicableProducts.map((p: any) => p._id),
+      applicableCategories: discount.applicableCategories,
+      usageLimit: discount.usageLimit?.toString() || '',
+      userUsageLimit: discount.userUsageLimit.toString(),
+      startDate: new Date(discount.startDate).toISOString().split('T')[0],
+      endDate: new Date(discount.endDate).toISOString().split('T')[0]
+    });
+    setShowDiscountForm(true);
+  };
+
+  const handleDeleteDiscount = async (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا الكود؟')) {
+      try {
+        await discountCodeAPI.deleteDiscountCode(id);
+        showSuccessToast('تم حذف كود الخصم بنجاح');
+        loadDiscountCodes();
+      } catch (error) {
+        console.error('Error deleting discount code:', error);
+        showErrorToast('فشل حذف كود الخصم');
+      }
+    }
+  };
+
+  const resetDiscountForm = () => {
+    setDiscountForm({
+      code: '',
+      description: '',
+      discountType: 'percentage',
+      discountValue: '',
+      minimumAmount: '',
+      maxDiscountAmount: '',
+      applicableProducts: [],
+      applicableCategories: [],
+      usageLimit: '',
+      userUsageLimit: '1',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    });
+  };
 
   // Save games to alpha_products in localStorage whenever they change (but not on initial load)
   useEffect(() => {
@@ -578,6 +702,31 @@ const AdminDashboard: React.FC = () => {
                 }`}
               >
                 إدارة الطلبات
+              </button>
+              <button
+                onClick={() => setActiveTab('discounts')}
+                className={`py-4 px-6 text-sm font-medium transition-colors ${
+                  activeTab === 'discounts'
+                    ? 'border-b-2 border-red-500 text-red-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                أكواد الخصم
+              </button>
+              <button
+                onClick={() => setActiveTab('messages')}
+                className={`py-4 px-6 text-sm font-medium transition-colors relative ${
+                  activeTab === 'messages'
+                    ? 'border-b-2 border-red-500 text-red-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                رسائل الزبائن
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadMessages}
+                  </span>
+                )}
               </button>
             </nav>
           </div>
@@ -1016,6 +1165,247 @@ const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Discount Codes Tab */}
+          {activeTab === 'discounts' && (
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">إدارة أكواد الخصم</h2>
+                <button
+                  onClick={() => {
+                    resetDiscountForm();
+                    setEditingDiscount(null);
+                    setShowDiscountForm(true);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  إضافة كود خصم
+                </button>
+              </div>
+
+              {/* Discount Form Modal */}
+              {showDiscountForm && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-[#1a1d24] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-lg font-semibold text-white mb-4">
+                      {editingDiscount ? 'تعديل كود الخصم' : 'إضافة كود خصم جديد'}
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">كود الخصم</label>
+                          <input
+                            type="text"
+                            value={discountForm.code}
+                            onChange={(e) => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder="SALE2024"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">نوع الخصم</label>
+                          <select
+                            value={discountForm.discountType}
+                            onChange={(e) => setDiscountForm({...discountForm, discountType: e.target.value as 'percentage' | 'fixed'})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          >
+                            <option value="percentage">نسبة مئوية (%)</option>
+                            <option value="fixed">مبلغ ثابت ($)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">الوصف</label>
+                        <input
+                          type="text"
+                          value={discountForm.description}
+                          onChange={(e) => setDiscountForm({...discountForm, description: e.target.value})}
+                          className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          placeholder="خصم خاص للمنتجات المحددة"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">قيمة الخصم</label>
+                          <input
+                            type="number"
+                            value={discountForm.discountValue}
+                            onChange={(e) => setDiscountForm({...discountForm, discountValue: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder={discountForm.discountType === 'percentage' ? '10' : '5'}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">الحد الأدنى للشراء ($)</label>
+                          <input
+                            type="number"
+                            value={discountForm.minimumAmount}
+                            onChange={(e) => setDiscountForm({...discountForm, minimumAmount: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">أقصى خصم ($)</label>
+                          <input
+                            type="number"
+                            value={discountForm.maxDiscountAmount}
+                            onChange={(e) => setDiscountForm({...discountForm, maxDiscountAmount: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder="اختياري"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ البدء</label>
+                          <input
+                            type="date"
+                            value={discountForm.startDate}
+                            onChange={(e) => setDiscountForm({...discountForm, startDate: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">تاريخ الانتهاء</label>
+                          <input
+                            type="date"
+                            value={discountForm.endDate}
+                            onChange={(e) => setDiscountForm({...discountForm, endDate: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">عدد مرات الاستخدام (الإجمالي)</label>
+                          <input
+                            type="number"
+                            value={discountForm.usageLimit}
+                            onChange={(e) => setDiscountForm({...discountForm, usageLimit: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder="غير محدود"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">عدد مرات الاستخدام (لكل مستخدم)</label>
+                          <input
+                            type="number"
+                            value={discountForm.userUsageLimit}
+                            onChange={(e) => setDiscountForm({...discountForm, userUsageLimit: e.target.value})}
+                            className="w-full bg-[#0a0a0a] text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
+                            placeholder="1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={() => {
+                          setShowDiscountForm(false);
+                          setEditingDiscount(null);
+                        }}
+                        className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        onClick={handleSaveDiscount}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        {editingDiscount ? 'تحديث' : 'إضافة'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Discount Codes Table */}
+              <div className="bg-[#1a1d24] rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-[#0a0a0a]">
+                    <tr>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الكود
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الوصف
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الخصم
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الاستخدام
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الحالة
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        الإجراءات
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {discountCodes.map((discount) => (
+                      <tr key={discount._id} className="hover:bg-[#0a0a0a]">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">{discount.code}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-300">{discount.description}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-300">
+                            {discount.discountType === 'percentage' 
+                              ? `${discount.discountValue}%` 
+                              : `$${discount.discountValue}`
+                            }
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-300">
+                            {discount.usageCount}/{discount.usageLimit || '∞'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            discount.isActive 
+                              ? 'bg-green-900/30 text-green-400' 
+                              : 'bg-red-900/30 text-red-400'
+                          }`}>
+                            {discount.isActive ? 'نشط' : 'غير نشط'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleEditDiscount(discount)}
+                            className="text-blue-400 hover:text-blue-300 ml-3"
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDiscount(discount._id)}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            حذف
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
