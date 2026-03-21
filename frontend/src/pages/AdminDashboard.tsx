@@ -327,9 +327,18 @@ const AdminDashboard: React.FC = () => {
       console.error('Error status:', error.response?.status);
       console.error('Error data:', error.response?.data);
       
+      // Handle 401 errors - token expired or invalid
+      if (error.response?.status === 401) {
+        console.log('Token expired/invalid, logging out...');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+      
       let errorMessage = 'فشل تحميل المحادثات';
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      if (error.response?.data?.error || error.response?.data?.message) {
+        errorMessage = error.response.data.error || error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
