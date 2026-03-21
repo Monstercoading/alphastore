@@ -61,6 +61,11 @@ class SocketService {
     this.socket?.on('userStopTyping', callback);
   }
 
+  // Generic event listener for custom events
+  on(event: string, callback: (data: any) => void) {
+    this.socket?.on(event, callback);
+  }
+
   emitTyping(conversationId: string, user: any) {
     this.socket?.emit('typing', { conversationId, user });
   }
