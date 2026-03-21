@@ -51,7 +51,7 @@ interface Order {
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
-  const [activeTab, setActiveTab] = useState<'games' | 'orders' | 'messages' | 'discounts'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'orders' | 'discounts'>('games');
   const [games, setGames] = useState<Game[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -762,11 +762,9 @@ const AdminDashboard: React.FC = () => {
                 أكواد الخصم
               </button>
               <button
-                onClick={() => setActiveTab('messages')}
+                onClick={() => setShowChatModal(true)}
                 className={`py-4 px-6 text-sm font-medium transition-colors relative ${
-                  activeTab === 'messages'
-                    ? 'border-b-2 border-red-500 text-red-500'
-                    : 'text-gray-400 hover:text-white'
+                  'text-gray-400 hover:text-white'
                 }`}
               >
                 رسائل الزبائن
@@ -1205,113 +1203,6 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Messages Tab */}
-          {activeTab === 'messages' && (
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">رسائل الزبائن</h2>
-                <button
-                  onClick={loadConversations}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  تحديث
-                </button>
-              </div>
-
-              {conversations.length === 0 ? (
-                <div className="text-center py-12 bg-[#1a1d24] rounded-xl">
-                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-white mb-2">لا يوجد طلب دعم فني</h3>
-                  <p className="text-gray-400">عندما يطلب أحد الزبائن الدعم الفني، ستظهر المحادثات هنا</p>
-                </div>
-              ) : (
-                <div className="bg-[#1a1d24] rounded-xl overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-[#0a0a0a]">
-                      <tr>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          رقم الطلب
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          الزبون
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          الطلب
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          الحالة
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          آخر رسالة
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          الإجراءات
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {conversations.map((conversation) => (
-                        <tr key={conversation._id} className="hover:bg-[#0a0a0a]">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{conversation.customerName}</div>
-                            <div className="text-xs text-gray-400">{conversation.customerEmail}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-300">
-                              {(() => {
-                                const orderId = conversation.orderId as any;
-                                let orderIdStr = '';
-                                if (typeof orderId === 'string') {
-                                  orderIdStr = orderId;
-                                } else if (orderId && typeof orderId === 'object') {
-                                  orderIdStr = orderId._id || orderId.toString();
-                                }
-                                return `طلب #${orderIdStr.slice(-6) || '---'}`;
-                              })()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              conversation.status === 'open' 
-                                ? 'bg-green-900/30 text-green-400' 
-                                : 'bg-gray-700 text-gray-400'
-                            }`}>
-                              {conversation.status === 'open' ? 'مفتوحة' : 'مغلقة'}
-                            </span>
-                            {conversation.unreadByAdmin > 0 && (
-                              <span className="mr-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                                {conversation.unreadByAdmin} جديد
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-400">
-                              {conversation.lastMessage 
-                                ? new Date(conversation.lastMessage).toLocaleDateString('ar-SA')
-                                : 'لا توجد رسائل'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={() => navigate(`/conversation/${conversation._id}`)}
-                              className="text-blue-400 hover:text-blue-300"
-                            >
-                              فتح المحادثة
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Discount Codes Tab */}
           {activeTab === 'discounts' && (
@@ -1555,21 +1446,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Chat Button */}
-      <button
-        onClick={() => setShowChatModal(true)}
-        className="fixed bottom-6 left-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
-        title="فتح المحادثات"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-        {unreadMessages > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadMessages}
-          </span>
-        )}
-      </button>
 
       {/* Chat Modal */}
       <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} />
