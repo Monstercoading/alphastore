@@ -2,7 +2,9 @@ import { io, Socket } from 'socket.io-client';
 
 class SocketService {
   private socket: Socket | null = null;
-  private readonly serverUrl = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com';
+  private readonly serverUrl = process.env.REACT_APP_API_URL 
+    ? process.env.REACT_APP_API_URL.replace('/api', '') 
+    : 'https://alphastore-6rvv.onrender.com';
 
   connect() {
     if (!this.socket) {
