@@ -305,6 +305,9 @@ const AdminDashboard: React.FC = () => {
   const loadConversations = async () => {
     try {
       console.log('Loading conversations...');
+      console.log('Current user state:', state);
+      console.log('Token in localStorage:', localStorage.getItem('token'));
+      
       const convs = await conversationAPI.getAdminConversations();
       console.log('Conversations loaded:', convs);
       
@@ -318,9 +321,20 @@ const AdminDashboard: React.FC = () => {
       
       // Show success feedback
       showSuccessToast('تم تحديث المحادثات');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading conversations:', error);
-      showErrorToast('فشل تحميل المحادثات');
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      
+      let errorMessage = 'فشل تحميل المحادثات';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showErrorToast(errorMessage);
     }
   };
 

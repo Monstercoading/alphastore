@@ -33,14 +33,24 @@ const upload = multer({
 // Get all conversations for admin
 router.get('/admin', auth, async (req, res) => {
   try {
+    console.log('Admin conversations request from user:', req.user);
+    
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      console.log('Access denied - user is not admin:', req.user.role);
+      return res.status(403).json({ error: 'Access denied - admin only' });
+    }
+
+    console.log('Fetching admin conversations...');
     const conversations = await Conversation.find({ status: 'open' })
       .populate('orderId', 'totalAmount createdAt')
       .sort({ lastMessageTime: -1 });
     
+    console.log('Admin conversations found:', conversations.length);
     res.json(conversations);
   } catch (error) {
-    console.error('Error fetching conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch conversations' });
+    console.error('Error fetching admin conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations: ' + error.message });
   }
 });
 
