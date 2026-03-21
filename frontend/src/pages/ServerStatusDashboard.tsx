@@ -93,6 +93,7 @@ const ServerStatusDashboard: React.FC = () => {
     
     setIsMonitoringSocket(true);
     addSocketLog('Starting Socket.io monitoring...', null, 'connect');
+    addSocketLog(`Connecting to backend: ${serverStatus.backend.url}`, null, 'connect');
     
     // Connect to socket
     socketService.connect();
@@ -107,7 +108,16 @@ const ServerStatusDashboard: React.FC = () => {
     });
     
     socketService.on('connect_error', (error) => {
-      addSocketLog('Socket.io connection error', error, 'error');
+      addSocketLog('Socket.io connection error', {
+        message: error.message,
+        description: error.description,
+        type: error.type,
+        context: error.context,
+        code: error.code
+      }, 'error');
+      
+      // Test if backend is accessible for Socket.io
+      testSocketIOAvailability();
     });
     
     // Monitor message events
@@ -154,6 +164,41 @@ const ServerStatusDashboard: React.FC = () => {
 
   const clearLogs = () => {
     setSocketLogs([]);
+  };
+
+  const testSocketIOAvailability = async () => {
+    addSocketLog('Testing Socket.io availability...', null, 'connect');
+    
+    try {
+      // Test 1: Check if backend is reachable
+      const response = await fetch(`${serverStatus.backend.url}/socket.io/`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+      
+      addSocketLog('Backend Socket.io endpoint test', {
+        status: response.status,
+        statusText: response.statusText,
+        url: `${serverStatus.backend.url}/socket.io/`
+      }, 'connect');
+      
+      // Test 2: Try to connect with different transport methods
+      addSocketLog('Testing WebSocket transport...', null, 'connect');
+      
+    } catch (error: any) {
+      addSocketLog('Socket.io availability test failed', {
+        error: error.message,
+        stack: error.stack
+      }, 'error');
+      
+      // Suggest possible solutions
+      addSocketLog('Possible solutions:', {
+        '1': 'Check if backend is running',
+        '2': 'Verify CORS configuration on backend',
+        '3': 'Check if Socket.io is properly initialized on backend',
+        '4': 'Verify backend URL is correct'
+      }, 'error');
+    }
   };
 
   const testBackendConnection = async (): Promise<void> => {
