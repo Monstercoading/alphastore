@@ -4,6 +4,17 @@ const DiscountCode = require('../models/DiscountCode');
 const Game = require('../models/Game');
 const auth = require('../middleware/auth');
 
+// Test endpoint for Server Status Dashboard (no auth required)
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Discount Codes API is working',
+    endpoint: '/api/discount-codes',
+    protected: true,
+    note: 'This API requires authentication for actual operations',
+    status: 'Active'
+  });
+});
+
 // Get all discount codes (admin only)
 router.get('/', auth, async (req, res) => {
   try {

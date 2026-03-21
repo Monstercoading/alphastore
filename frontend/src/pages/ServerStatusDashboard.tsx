@@ -62,7 +62,7 @@ const ServerStatusDashboard: React.FC = () => {
     { name: 'Auth API', path: '/api/auth/login' },
     { name: 'Conversations API', path: '/api/conversations' },
     { name: 'Users API', path: '/api/users' },
-    { name: 'Discount Codes API', path: '/api/discount-codes' },
+    { name: 'Discount Codes API', path: '/api/discount-codes/test' },
     { name: 'Games API', path: '/api/games' },
     { name: 'Notifications API', path: '/api/admin/notifications' }
   ];
