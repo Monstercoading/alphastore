@@ -612,6 +612,21 @@ app.use('/api/conversations', conversationsRouter);
 const discountCodesRouter = require('./routes/discountCodes');
 app.use('/api/discount-codes', discountCodesRouter);
 
+// ========== AUTH API ==========
+
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
+// ========== USERS API ==========
+
+const usersRouter = require('./routes/users');
+app.use('/api/users', usersRouter);
+
+// ========== GAMES API ==========
+
+const gamesRouter = require('./routes/games');
+app.use('/api/games', gamesRouter);
+
 // ========== ADMIN NOTIFICATIONS SSE ==========
 
 // SSE endpoint for real-time admin notifications
