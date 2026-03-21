@@ -27,11 +27,7 @@ const Conversation: React.FC = () => {
   };
 
   const isCurrentUser = (senderType: string) => {
-    if (state.user?.role === 'admin') {
-      return senderType === 'admin';
-    } else {
-      return senderType === 'customer';
-    }
+    return senderType === (state.user?.role === 'admin' ? 'admin' : 'customer');
   };
 
   useEffect(() => {
@@ -130,24 +126,40 @@ const Conversation: React.FC = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !id) return;
 
+    const senderType = state.user?.role === 'admin' ? 'admin' : 'customer';
+    const tempMessage = {
+      _id: `temp-${Date.now()}`,
+      conversationId: id,
+      senderId: state.user?.id,
+      senderType,
+      content: newMessage.trim(),
+      isRead: false,
+      read: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Add message to UI immediately
+    setMessages(prev => [...prev, tempMessage]);
+    setNewMessage('');
+    scrollToBottom();
+
+    setSending(true);
     try {
-      setSending(true);
-      const message = await conversationAPI.sendMessage(id, newMessage.trim());
+      const message = await conversationAPI.sendMessage(id, newMessage.trim(), senderType);
       
-      // Send via Socket.io for real-time update
-      socketService.sendMessage({
-        conversationId: id,
-        message,
-        senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
-        senderId: state.user?.id || 'guest'
-      });
+      // Replace temp message with real message
+      setMessages(prev => prev.map(msg => 
+        msg._id === tempMessage._id ? message : msg
+      ));
       
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       showErrorToast('فشل إرسال الرسالة');
+      
+      // Remove temp message on error
+      setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id));
     } finally {
       setSending(false);
     }
@@ -261,42 +273,64 @@ const Conversation: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full bg-gray-50">
         {messages.map((message, index) => (
           <div
-            key={index}
-            className={`mb-4 flex ${isCurrentUser(message.senderType) ? 'justify-end' : 'justify-start'}`}
+            key={message._id || index}
+            className={`flex mb-4 ${
+              message.senderType === 'admin' ? 'justify-start' : 'justify-end'
+            }`}
           >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                isCurrentUser(message.senderType)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-200'
-              }`}
-            >
-              {message.imageUrl ? (
-                <img
-                  src={message.imageUrl}
-                  alt="صورة"
-                  className="rounded-lg max-w-full h-auto"
-                />
-              ) : (
-                <p>{message.content}</p>
-              )}
-              <p className={`text-xs mt-1 ${
-                isCurrentUser(message.senderType) ? 'text-blue-200' : 'text-gray-400'
+            <div className={`flex items-end gap-2 max-w-xs lg:max-w-md ${
+              message.senderType === 'admin' ? 'flex-row' : 'flex-row-reverse'
+            }`}>
+              {/* Avatar/Icon */}
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
+                message.senderType === 'admin' ? 'bg-green-600' : 'bg-blue-600'
               }`}>
-                {message.createdAt 
-                  ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  : 'الآن'
-                }
-                {isCurrentUser(message.senderType) && message.isRead && (
-                  <span className="mr-2">✓✓ تمت القراءة</span>
+                {message.senderType === 'admin' ? (
+                  // Headphone icon for admin
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                  </svg>
+                ) : (
+                  // Person icon for user
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                  </svg>
                 )}
-              </p>
+              </div>
+              
+              {/* Message bubble */}
+              <div className={`px-4 py-2 rounded-2xl ${
+                message.senderType === 'admin' 
+                  ? 'bg-white text-gray-800 shadow-md' 
+                  : 'bg-blue-600 text-white'
+              }`}>
+                {message.imageUrl ? (
+                  <img
+                    src={message.imageUrl}
+                    alt="صورة"
+                    className="rounded-lg max-w-full h-auto"
+                  />
+                ) : (
+                  <p className="text-sm">{message.content}</p>
+                )}
+                <p className={`text-xs mt-1 ${
+                  message.senderType === 'admin' ? 'text-gray-500' : 'text-blue-100'
+                }`}>
+                  {message.createdAt 
+                    ? new Date(message.createdAt).toLocaleTimeString('ar-SA', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : 'الآن'
+                  }
+                  {message.senderType !== 'admin' && message.isRead && (
+                    <span className="mr-1">✓✓</span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         ))}
@@ -304,8 +338,19 @@ const Conversation: React.FC = () => {
         {/* Typing indicator */}
         {typingUser && (
           <div className="flex justify-start mb-4">
-            <div className="bg-gray-700 text-gray-200 px-4 py-2 rounded-lg">
-              <p className="text-sm italic">{typingUser} يكتب...</p>
+            <div className="flex items-end gap-2">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                </svg>
+              </div>
+              <div className="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-md">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
             </div>
           </div>
         )}
