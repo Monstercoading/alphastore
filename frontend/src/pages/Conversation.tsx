@@ -151,8 +151,8 @@ const Conversation: React.FC = () => {
     try {
       const message = await conversationAPI.sendMessage(id, messageContent);
       
-      // Add message to UI after server response
-      setMessages(prev => [...prev, message]);
+      // Don't add message to UI here - Socket.io will handle real-time update
+      // This prevents duplicate messages
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -277,11 +277,11 @@ const Conversation: React.FC = () => {
           <div
             key={message._id || index}
             className={`flex mb-4 ${
-              message.senderType === 'admin' ? 'justify-start' : 'justify-end'
+              message.senderType === 'admin' ? 'justify-end' : 'justify-start'
             }`}
           >
             <div className={`flex items-end gap-2 max-w-xs lg:max-w-md ${
-              message.senderType === 'admin' ? 'flex-row' : 'flex-row-reverse'
+              message.senderType === 'admin' ? 'flex-row-reverse' : 'flex-row'
             }`}>
               {/* Avatar/Icon */}
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
