@@ -150,16 +150,6 @@ class ConversationAPI {
     }
   }
 
-  // Close conversation
-  async closeConversation(conversationId: string): Promise<void> {
-    try {
-      await api.put(`/conversations/${conversationId}/close`);
-    } catch (error) {
-      console.error('Error closing conversation:', error);
-      throw error;
-    }
-  }
-
   // Connect to SSE for real-time messages
   connectToMessages(callback: (message: any) => void): EventSource {
     const token = localStorage.getItem('token');
