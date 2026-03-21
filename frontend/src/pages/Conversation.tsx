@@ -217,12 +217,12 @@ const Conversation: React.FC = () => {
             <div>
               <h2 className="text-white font-semibold">
                 {state.user?.role === 'admin' 
-                  ? conversationData.customerName || 'زائر'
+                  ? conversationData.conversation.customerName || 'زائر'
                   : 'خدمة العملاء'
                 }
               </h2>
               {state.user?.role === 'admin' && (
-                <p className="text-gray-400 text-sm">{conversationData.customerEmail}</p>
+                <p className="text-gray-400 text-sm">{conversationData.conversation.customerEmail}</p>
               )}
             </div>
           </div>
