@@ -38,12 +38,21 @@ const Cart: React.FC = () => {
 
   const handleSupport = async (orderId: string) => {
     try {
+      console.log('Creating conversation for order:', orderId);
       const conversation = await conversationAPI.createConversation(orderId);
+      console.log('Conversation created:', conversation);
       showSuccessToast('تم فتح المحادثة مع الدعم الفني');
       navigate(`/conversation/${conversation._id}`);
     } catch (error: any) {
       console.error('Error creating conversation:', error);
-      const errorMessage = error.response?.data?.error || 'فشل فتح المحادثة. يرجى المحاولة مرة أخرى.';
+      let errorMessage = 'فشل فتح المحادثة. يرجى المحاولة مرة أخرى.';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       showErrorToast(errorMessage);
     }
   };

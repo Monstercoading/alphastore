@@ -106,29 +106,27 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Create new conversation (when customer clicks support button)
-router.post('/', auth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { orderId } = req.body;
 
-    // Verify order belongs to customer
+    // Verify order exists
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (order.user.email !== req.user.email && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    // Check if conversation already exists
+    // For guest users, create conversation without authentication
     let conversation = await Conversation.findOne({ orderId });
     
     if (!conversation) {
       conversation = new Conversation({
         orderId,
-        customerId: req.user.id,
-        customerName: `${req.user.firstName} ${req.user.lastName}`,
-        customerEmail: req.user.email,
+        customerId: order.user?._id || null,
+        customerName: order.user?.firstName && order.user?.lastName 
+          ? `${order.user.firstName} ${order.user.lastName}` 
+          : 'زائر',
+        customerEmail: order.user?.email || 'guest@example.com',
         lastMessage: 'تم فتح المحادثة'
       });
       await conversation.save();
