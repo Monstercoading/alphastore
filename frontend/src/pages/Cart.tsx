@@ -39,6 +39,14 @@ const Cart: React.FC = () => {
   const handleSupport = async (orderId: string) => {
     try {
       console.log('Creating conversation for order:', orderId);
+      console.log('Order object:', orderId);
+      
+      if (!orderId) {
+        console.error('Order ID is undefined or null');
+        showErrorToast('معرف الطلب غير صالح');
+        return;
+      }
+      
       const conversation = await conversationAPI.createConversation(orderId);
       console.log('Conversation created:', conversation);
       showSuccessToast('تم فتح المحادثة مع الدعم الفني');
@@ -49,6 +57,7 @@ const Cart: React.FC = () => {
       
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
+        console.error('Backend error:', error.response.data.error);
       } else if (error.message) {
         errorMessage = error.message;
       }

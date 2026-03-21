@@ -56,7 +56,7 @@ const SearchGames: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-ap.onrender.com/api';
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
       const response = await fetch(`${API_URL}/games/categories/list`);
       const data = await response.json();
       if (data.success) {
@@ -69,7 +69,7 @@ const SearchGames: React.FC = () => {
 
   const fetchPlatforms = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-ap.onrender.com/api';
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
       const response = await fetch(`${API_URL}/games/platforms/list`);
       const data = await response.json();
       if (data.success) {
@@ -83,7 +83,7 @@ const SearchGames: React.FC = () => {
   const fetchGames = async () => {
     setLoading(true);
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-ap.onrender.com/api';
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (category) params.append('category', category);
