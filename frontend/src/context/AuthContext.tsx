@@ -257,6 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Create user using API
       const newUser = await userAPI.createUser({
+        id: `temp-${Date.now()}`, // Temporary ID, will be replaced by backend
         email: userData.email,
         firstName: userData.firstName,
         lastName: userData.lastName,
