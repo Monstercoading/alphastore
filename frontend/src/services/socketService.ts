@@ -7,9 +7,15 @@ class SocketService {
   connect() {
     if (!this.socket) {
       console.log('🔌 Connecting to Socket.io server:', this.serverUrl);
-      this.socket = io(this.serverUrl, {
+      
+      // Connect to same origin to avoid CORS issues
+      const connectUrl = window.location.origin.includes('vercel.app') 
+        ? this.serverUrl 
+        : 'http://localhost:5000';
+        
+      this.socket = io(connectUrl, {
         path: '/socket.io/',
-        transports: ['websocket', 'polling'], // Try both transports
+        transports: ['polling', 'websocket'], // Try polling first
         timeout: 20000,
         forceNew: true,
         reconnection: true,

@@ -17,8 +17,28 @@ const io = socketIo(server, {
     origin: "*", // Allow all origins for testing
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  transports: ['polling', 'websocket'], // Support both transports
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
+
+// Log Socket.io server events
+io.on('connection', (socket) => {
+  console.log('🔌 Socket.io client connected:', socket.id);
+  console.log('🌐 Client origin:', socket.handshake.headers.origin);
+  console.log('📡 Transport used:', socket.conn.transport.name);
+  
+  socket.on('disconnect', (reason) => {
+    console.log('🔌 Socket.io client disconnected:', socket.id, 'Reason:', reason);
+  });
+  
+  socket.on('error', (error) => {
+    console.error('🚨 Socket.io client error:', error);
+  });
+});
+
+console.log('🚀 Socket.io server initialized with CORS:', io.opts.cors);
 
 const PORT = process.env.PORT || 5000;
 
