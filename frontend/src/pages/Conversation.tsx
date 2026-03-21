@@ -146,7 +146,7 @@ const Conversation: React.FC = () => {
 
     setSending(true);
     try {
-      const message = await conversationAPI.sendMessage(id, newMessage.trim(), senderType);
+      const message = await conversationAPI.sendMessage(id, newMessage.trim());
       
       // Replace temp message with real message
       setMessages(prev => prev.map(msg => 
