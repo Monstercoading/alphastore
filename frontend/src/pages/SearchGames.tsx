@@ -56,7 +56,8 @@ const SearchGames: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/games/categories/list');
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+      const response = await fetch(`${API_URL}/games/categories/list`);
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
@@ -68,7 +69,8 @@ const SearchGames: React.FC = () => {
 
   const fetchPlatforms = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/games/platforms/list');
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+      const response = await fetch(`${API_URL}/games/platforms/list`);
       const data = await response.json();
       if (data.success) {
         setPlatforms(data.data);
@@ -81,6 +83,7 @@ const SearchGames: React.FC = () => {
   const fetchGames = async () => {
     setLoading(true);
     try {
+      const API_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (category) params.append('category', category);
@@ -89,10 +92,10 @@ const SearchGames: React.FC = () => {
       if (maxPrice) params.append('maxPrice', maxPrice);
       if (sortBy) params.append('sort', sortBy);
 
-      const response = await fetch(`http://localhost:5000/api/games?${params}`);
+      const response = await fetch(`${API_URL}/products?${params}`);
       const data = await response.json();
-      if (data.success) {
-        setGames(data.data);
+      if (Array.isArray(data)) {
+        setGames(data);
       }
     } catch (error) {
       console.error('Error fetching games:', error);

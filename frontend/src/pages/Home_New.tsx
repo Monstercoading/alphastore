@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { gamesAPI } from '../services/api';
-import { showNotification } from '../assets/notifications';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { mockGames, Game } from '../data/mockGames';
 
 const Home: React.FC = () => {
@@ -51,13 +51,21 @@ const Home: React.FC = () => {
   };
 
   const toggleFavorite = (game: Game) => {
+    // Check if user is logged in
+    if (!state.isAuthenticated || !state.user) {
+      showErrorToast('يجب تسجيل الدخول لإضافة الألعاب إلى المفضلة');
+      return;
+    }
+    
     const favIds = [...favorites];
     const index = favIds.indexOf(game._id);
     
     if (index > -1) {
       favIds.splice(index, 1);
+      showSuccessToast('تم إزالة اللعبة من المفضلة');
     } else {
       favIds.push(game._id);
+      showSuccessToast('تم إضافة اللعبة للمفضلة');
     }
     
     setFavorites(favIds);

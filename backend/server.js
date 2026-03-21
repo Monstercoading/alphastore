@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv');
+const { google } = require('googleapis');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
@@ -31,7 +33,7 @@ mongoose.connect(MONGO_URI, {
 });
 
 // CORS Configuration - Allow Netlify and local development
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://silver-frangipane-2ddeca.netlify.app';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://alphastore-vert.vercel.app';
 app.use(cors({
   origin: FRONTEND_URL,
   credentials: true,
@@ -39,6 +41,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 app.use(express.json());
+
+// Google OAuth Config
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://alphastore-vert.vercel.app/auth/google/callback';
 
 // Serve static files from public folder
 app.use(express.static(path.join(__dirname, 'public')));
@@ -95,7 +102,7 @@ const orderSchema = new mongoose.Schema({
 // User Model
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String }, // Optional for Google OAuth
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
@@ -366,7 +373,11 @@ app.post('/api/auth/register', async (req, res) => {
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(409).json({ 
+        success: false,
+        message: 'هذا الحساب مسجل لدينا بالفعل',
+        redirectToLogin: true 
+      });
     }
     
     const newUser = new User({
@@ -380,12 +391,17 @@ app.post('/api/auth/register', async (req, res) => {
     const { password: _, ...userWithoutPassword } = savedUser.toObject();
     
     res.status(201).json({ 
+      success: true,
       user: userWithoutPassword, 
       token: 'fake-jwt-token-' + savedUser._id 
     });
   } catch (err) {
     console.error('Error registering user:', err);
-    res.status(500).json({ error: 'Failed to register user', message: err.message });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to register user', 
+      message: err.message 
+    });
   }
 });
 
@@ -401,12 +417,117 @@ app.post('/api/auth/login', async (req, res) => {
     
     const { password: _, ...userWithoutPassword } = user.toObject();
     res.json({ 
+      success: true,
       user: userWithoutPassword, 
       token: 'fake-jwt-token-' + user._id 
     });
   } catch (err) {
     console.error('Error logging in:', err);
     res.status(500).json({ error: 'Failed to login', message: err.message });
+  }
+});
+
+// Google OAuth
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { code, flow } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Authorization code is required' 
+      });
+    }
+
+    // Exchange code for tokens
+    const oauth2Client = new google.auth.OAuth2(
+      CLIENT_ID,
+      CLIENT_SECRET,
+      REDIRECT_URI
+    );
+
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    // Get user info
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const { data } = await oauth2.userinfo.get();
+
+    if (!data.email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Failed to get user email from Google' 
+      });
+    }
+
+    // Check if user exists
+    let user = await User.findOne({ email: data.email });
+    let isNewUser = !user;
+
+    // Handle flow logic
+    if (flow === 'signup' && user) {
+      return res.status(400).json({
+        success: false,
+        message: 'هذا الحساب موجود بالفعل، يرجى استخدامه لتسجيل الدخول بدلاً من الإنشاء',
+        redirectToLogin: true
+      });
+    }
+
+    if (flow === 'login' && !user) {
+      return res.status(400).json({
+        success: false,
+        message: 'هذا الحساب غير موجود، يرجى إنشاء حساب جديد',
+        redirectToSignup: true
+      });
+    }
+
+    if (!user) {
+      // Create new user
+      user = new User({
+        email: data.email,
+        firstName: data.given_name || data.name?.split(' ')[0] || 'User',
+        lastName: data.family_name || data.name?.split(' ').slice(1).join(' ') || '',
+        role: 'user'
+      });
+
+      await user.save();
+      console.log('✅ New Google user created:', user.email);
+    }
+
+    // Create JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        name: user.firstName + ' ' + user.lastName
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        picture: data.picture,
+        role: user.role
+      },
+      token: token,
+      isNewUser: isNewUser,
+      message: isNewUser ? 'Account created successfully' : 'Login successful'
+    });
+
+  } catch (error) {
+    console.error('❌ Google OAuth Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed',
+      error: error.message
+    });
   }
 });
 
@@ -473,9 +594,38 @@ app.get('/api/admin/notifications', (req, res) => {
   });
 });
 
-// ========== ROOT ROUTE ==========
+// ========== GAMES CATEGORIES & PLATFORMS ==========
 
-app.get('/', (req, res) => {
+// Get games categories list
+app.get('/api/games/categories/list', (req, res) => {
+  try {
+    const categories = [
+      'أكشن', 'مغامرة', 'رياضة', 'سباق', 'استراتيجية', 
+      'مغامرات', 'قتال', 'ألعاب الطاولة', 'عائلة', 'أطفال',
+      'محاكاة', 'رياضي', 'لغز', 'تصويب', 'RPG', 'MMORPG'
+    ];
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch categories' });
+  }
+});
+
+// Get games platforms list
+app.get('/api/games/platforms/list', (req, res) => {
+  try {
+    const platforms = [
+      'PS5', 'PS4', 'PS3', 'Xbox Series X', 'Xbox Series S', 
+      'Xbox One', 'Xbox 360', 'PC', 'Nintendo Switch', 'Mobile'
+    ];
+    res.json({ success: true, data: platforms });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch platforms' });
+  }
+});
+
+// ========== ROOT ENDPOINT ==========
+
+app.get('/api', (req, res) => {
   res.json({
     message: 'Alpha Store API - MongoDB Atlas',
     status: 'running',

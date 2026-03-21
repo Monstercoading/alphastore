@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatDisplayName } from '../utils/nameFormatter';
 import { gamesAPI } from '../services/api';
-import { showNotification } from '../assets/notifications';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { STATIC_PRODUCTS, getMergedProducts } from '../data/products-data';
 
 // API URL constants for server connection
@@ -77,13 +77,19 @@ const Home: React.FC = () => {
   };
 
   const toggleFavorite = (gameId: string) => {
+    // Check if user is logged in
+    if (!state.isAuthenticated || !state.user) {
+      showErrorToast('يجب تسجيل الدخول لإضافة الألعاب إلى المفضلة');
+      return;
+    }
+    
     let newFavorites;
     if (favorites.includes(gameId)) {
       newFavorites = favorites.filter(id => id !== gameId);
-      showNotification('تم إزالة اللعبة من المفضلة', 'success');
+      showSuccessToast('تم إزالة اللعبة من المفضلة');
     } else {
       newFavorites = [...favorites, gameId];
-      showNotification('تم إضافة اللعبة للمفضلة', 'success');
+      showSuccessToast('تم إضافة اللعبة للمفضلة');
     }
     setFavorites(newFavorites);
     localStorage.setItem('favoriteGames', JSON.stringify(newFavorites));

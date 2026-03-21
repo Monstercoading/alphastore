@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://alphastore-6rvv.onrender.com/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -23,10 +23,10 @@ export const authAPI = {
   login: (email: string, password: string) => api.post('/auth/login', { email, password }),
   register: (userData: any) => api.post('/auth/register', userData),
   verifyToken: () => api.get('/auth/verify'),
-  googleAuth: (code: string) => api.post('/auth/google', { code }),
+  googleAuth: (code: string, flow?: string) => api.post('/auth/google', { code, flow }),
 };
 
-// Games APIs - Use real API
+// Games APIs - Use products endpoint
 export const gamesAPI = {
   getGames: (filters?: any) => api.get('/products', { params: filters }),
   getGame: (id: string) => api.get(`/products/${id}`),

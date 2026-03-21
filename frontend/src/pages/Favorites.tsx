@@ -26,6 +26,24 @@ const Favorites: React.FC = () => {
   const [allGames, setAllGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if user is logged in
+  if (!state.isAuthenticated || !state.user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">يجب تسجيل الدخول</h2>
+          <p className="text-gray-400 mb-6">يجب تسجيل الدخول لعرض المفضلة</p>
+          <Link 
+            to="/login" 
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+          >
+            تسجيل الدخول
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     loadFavorites();
   }, []);
