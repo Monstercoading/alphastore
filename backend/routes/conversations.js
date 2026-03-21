@@ -110,16 +110,27 @@ router.post('/', async (req, res) => {
   try {
     const { orderId } = req.body;
 
+    console.log('Creating conversation for order:', orderId);
+
+    // Validate orderId
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
     // Verify order exists
     const order = await Order.findById(orderId);
     if (!order) {
+      console.log('Order not found:', orderId);
       return res.status(404).json({ error: 'Order not found' });
     }
+
+    console.log('Order found:', order);
 
     // For guest users, create conversation without authentication
     let conversation = await Conversation.findOne({ orderId });
     
     if (!conversation) {
+      console.log('Creating new conversation...');
       conversation = new Conversation({
         orderId,
         customerId: order.user?._id || null,
@@ -129,13 +140,17 @@ router.post('/', async (req, res) => {
         customerEmail: order.user?.email || 'guest@example.com',
         lastMessage: 'تم فتح المحادثة'
       });
+      
       await conversation.save();
+      console.log('Conversation saved:', conversation);
+    } else {
+      console.log('Existing conversation found:', conversation);
     }
 
     res.status(201).json(conversation);
   } catch (error) {
     console.error('Error creating conversation:', error);
-    res.status(500).json({ error: 'Failed to create conversation' });
+    res.status(500).json({ error: 'Failed to create conversation: ' + error.message });
   }
 });
 
