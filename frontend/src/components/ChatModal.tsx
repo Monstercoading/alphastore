@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, MessageCircle, Archive, Send, Paperclip, Check, CheckCheck } from 'lucide-react';
 import { conversationAPI } from '../services/conversationAPI';
 import { socketService } from '../services/socketService';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../contexts/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 interface Message {
