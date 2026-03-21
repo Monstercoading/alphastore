@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { showNotification } from '../assets/notifications';
+import { formatDisplayName } from '../utils/nameFormatter';
+import { conversationAPI } from '../services/conversationAPI';
+import { showSuccessToast } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import Loading from '../components/Loading';
 import { API_URL } from '../config/api';
@@ -32,6 +34,16 @@ const Cart: React.FC = () => {
   const { navigateWithDelay, isLoading: navLoading } = useNavigationWithDelay();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleSupport = async (orderId: string) => {
+    try {
+      const conversation = await conversationAPI.createConversation(orderId);
+      showSuccessToast('تم فتح المحادثة مع الدعم الفني');
+      navigateWithDelay(`/conversation/${conversation._id}`, 500);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+    }
+  };
 
   useEffect(() => {
     if (state.isAuthenticated) {
@@ -223,8 +235,19 @@ const Cart: React.FC = () => {
                           <p className="text-gray-400 text-sm">المجموع الكلي</p>
                           <p className="text-2xl font-bold text-green-400">${order.totalAmount}</p>
                         </div>
-                        <div className="text-sm text-gray-400">
-                          {order.user.firstName} {order.user.lastName}
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleSupport(order._id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            تواصل مع الدعم الفني
+                          </button>
+                          <div className="text-sm text-gray-400">
+                            {order.user.firstName} {order.user.lastName}
+                          </div>
                         </div>
                       </div>
                     </div>

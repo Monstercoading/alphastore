@@ -18,6 +18,7 @@ import Favorites from './pages/Favorites';
 import Terms from './pages/Terms';
 import GoogleCallback from './pages/GoogleCallback';
 import TestBackend from './pages/TestBackend';
+import Conversation from './pages/Conversation';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function AppContent() {
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/conversation/:id" element={<Conversation />} />
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
           <Route path="/test-backend" element={<TestBackend />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { gamesAPI, ordersAPI } from '../services/api';
+import { conversationAPI, Conversation } from '../services/conversationAPI';
+import { playNotificationSound, playMessageSound } from '../utils/notificationSound';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { STATIC_PRODUCTS } from '../data/products-data';
 import { API_URL } from '../config/api';
 
@@ -43,9 +47,11 @@ interface Order {
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
-  const [activeTab, setActiveTab] = useState<'games' | 'orders'>('games');
+  const [activeTab, setActiveTab] = useState<'games' | 'orders' | 'messages'>('games');
   const [games, setGames] = useState<Game[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [showAddGameForm, setShowAddGameForm] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [lastKnownOrderCount, setLastKnownOrderCount] = useState(0);
