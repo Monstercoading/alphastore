@@ -5,15 +5,19 @@ import { socketService } from '../services/socketService';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
+import { Conversation as APIConversation, Message as APIMessage } from '../services/conversationAPI';
 
 interface Message {
   _id: string;
-  content: string;
-  senderId: string;
-  senderType: 'admin' | 'customer';
-  createdAt: string | Date;
-  read: boolean;
+  conversationId: string;
+  senderId?: string;
+  senderType: 'customer' | 'admin';
+  content?: string;
   imageUrl?: string;
+  isRead: boolean;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Conversation {
@@ -295,7 +299,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const filteredConversations = conversations.filter(conv => conv.status === activeTab);
 
   useEffect(() => {
-    socketService.onNewMessage((data) => {
+    socketService.onNewMessage((data: any) => {
       if (data.conversationId === selectedConversation) {
         setMessages(prev => [...prev, data.message]);
         scrollToBottom();
@@ -303,41 +307,24 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       fetchConversations();
     });
 
-    socketService.onUserTyping((data) => {
+    socketService.onUserTyping((data: any) => {
       if (data.conversationId === selectedConversation) {
         setIsTyping(true);
         setTypingUser(data.userName);
       }
     });
 
-    socketService.onUserStopTyping((data) => {
+    socketService.onUserStopTyping((data: any) => {
       if (data.conversationId === selectedConversation) {
         setIsTyping(false);
         setTypingUser(null);
       }
     });
 
-    socketService.onMessagesRead((data) => {
-      if (data.conversationId === selectedConversation) {
-        setMessages(prev => prev.map(msg => ({ ...msg, read: true })));
-      }
-      fetchConversations();
-    });
-
-    socketService.onConversationClosed((data) => {
-      fetchConversations();
-      if (data.conversationId === selectedConversation) {
-        setSelectedConversation(null);
-        setMessages([]);
-      }
-    });
-
     return () => {
-      socketService.offNewMessage();
-      socketService.offUserTyping();
-      socketService.offUserStopTyping();
-      socketService.offMessagesRead();
-      socketService.offConversationClosed();
+      socketService.off('newMessage');
+      socketService.off('userTyping');
+      socketService.off('userStopTyping');
     };
   }, [selectedConversation]);
 
@@ -551,7 +538,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                                 className="rounded-lg max-w-full h-auto"
                               />
                             ) : (
-                              <p className="text-sm">{message.content}</p>
+                              <p className="text-sm">{message.content || ''}</p>
                             )}
                           </div>
                           <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
