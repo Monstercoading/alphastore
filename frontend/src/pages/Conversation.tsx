@@ -134,11 +134,11 @@ const Conversation: React.FC = () => {
         markConversationAsRead(id);
       } else {
         // Check if this conversation belongs to the current user
-        const customerEmail = data.conversation.customerId?.email || data.conversation.customerEmail;
-        const customerName = data.conversation.customerId?.firstName || data.conversation.customerName;
+        const customerEmail = (data.conversation.customerId as any)?.email || data.conversation.customerEmail;
+        const customerName = (data.conversation.customerId as any)?.firstName || data.conversation.customerName;
         
         if (customerEmail === state.user?.email || 
-            (customerName && `${data.conversation.customerId?.firstName} ${data.conversation.customerId?.lastName}` === `${state.user?.firstName} ${state.user?.lastName}`)) {
+            (customerName && `${(data.conversation.customerId as any)?.firstName} ${(data.conversation.customerId as any)?.lastName}` === `${state.user?.firstName} ${state.user?.lastName}`)) {
           setConversationData(data);
           setMessages(data.messages);
           // Mark conversation notifications as read
