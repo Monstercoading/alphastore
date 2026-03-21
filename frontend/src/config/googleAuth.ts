@@ -30,3 +30,14 @@ export const initiateGoogleSignIn = () => {
   console.log('🔐 Redirecting to Google OAuth:', authUrl);
   window.location.href = authUrl;
 };
+
+// Initialize Google Sign In with flow type (signup or login)
+export const initiateGoogleSignInWithFlow = (flow: 'signup' | 'login') => {
+  // Store flow type in localStorage for callback to know
+  localStorage.setItem('google_oauth_flow', flow);
+  console.log(`🔐 Setting Google OAuth flow: ${flow}`);
+  
+  const authUrl = getGoogleAuthUrl();
+  console.log('🔐 Redirecting to Google OAuth:', authUrl);
+  window.location.href = authUrl;
+};

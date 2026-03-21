@@ -3,18 +3,19 @@
 
 import { API_URL } from '../config/api';
 
-export const getGoogleUserInfo = async (code: string) => {
+export const getGoogleUserInfo = async (code: string, flow: 'signup' | 'login' = 'login') => {
   try {
     console.log('📤 Sending code to backend:', code.substring(0, 20) + '...');
+    console.log('📤 Flow type:', flow);
     console.log('📤 API_URL:', `${API_URL}/auth/google`);
     
-    // إرسال الكود للـ Backend
+    // إرسال الكود للـ Backend مع نوع العملية
     const response = await fetch(`${API_URL}/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, flow }),
     });
 
     console.log('📥 Backend response status:', response.status);
@@ -22,8 +23,9 @@ export const getGoogleUserInfo = async (code: string) => {
 
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`;
+      let errorData: any = {};
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         console.error('❌ Backend error response:', errorData);
         errorMessage = errorData.message || errorData.error || errorMessage;
       } catch (e) {
@@ -31,7 +33,12 @@ export const getGoogleUserInfo = async (code: string) => {
         console.error('❌ Backend error text:', text);
         errorMessage = text || errorMessage;
       }
-      throw new Error(errorMessage);
+      
+      // Create error with additional data for handling in callback
+      const error: any = new Error(errorMessage);
+      error.status = response.status;
+      error.data = errorData;
+      throw error;
     }
 
     const data = await response.json();
@@ -41,7 +48,7 @@ export const getGoogleUserInfo = async (code: string) => {
       throw new Error(data.message || 'Google authentication failed');
     }
     
-    return { user: data.user, token: data.token };
+    return { user: data.user, token: data.token, isNewUser: data.isNewUser };
   } catch (error: any) {
     console.error('❌ Google Auth Error:', error);
     

@@ -225,10 +225,11 @@ app.post('/api/auth/login', async (req, res) => {
 // Real Google OAuth endpoint
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, flow } = req.body;
     
     console.log('🔍 Received Google OAuth request');
     console.log('🔍 Code present:', !!code);
+    console.log('🔍 Flow type:', flow); // 'signup' or 'login'
     console.log('🔍 CLIENT_ID:', CLIENT_ID ? 'Set' : 'Not set');
     console.log('🔍 CLIENT_SECRET:', CLIENT_SECRET ? 'Set' : 'Not set');
     console.log('🔍 REDIRECT_URI:', REDIRECT_URI);
@@ -259,8 +260,35 @@ app.post('/api/auth/google', async (req, res) => {
     if (mongoConnected) {
       user = await User.findOne({ email: data.email });
       
-      if (!user) {
-        // Create new user if not exists
+      if (user) {
+        // User exists
+        if (flow === 'signup') {
+          // If trying to signup but user exists → reject
+          console.log('❌ Signup rejected: User already exists:', user.email);
+          return res.status(400).json({
+            success: false,
+            error: 'User already exists',
+            message: 'هذا الحساب موجود بالفعل، يرجى استخدامه لتسجيل الدخول بدلاً من الإنشاء',
+            redirectToLogin: true,
+            existingUser: true
+          });
+        }
+        // flow === 'login' → allow login
+        console.log('✅ Existing user logged in:', user.email);
+      } else {
+        // User doesn't exist
+        if (flow === 'login') {
+          // If trying to login but user doesn't exist → reject
+          console.log('❌ Login rejected: User not found:', data.email);
+          return res.status(400).json({
+            success: false,
+            error: 'User not found',
+            message: 'هذا الحساب غير موجود، يرجى إنشاء حساب جديد',
+            redirectToSignup: true,
+            existingUser: false
+          });
+        }
+        // flow === 'signup' → create new user
         user = new User({
           email: data.email,
           firstName: data.given_name || data.name?.split(' ')[0] || 'User',
@@ -270,8 +298,6 @@ app.post('/api/auth/google', async (req, res) => {
         await user.save();
         isNewUser = true;
         console.log('✅ New user created:', user.email);
-      } else {
-        console.log('✅ Existing user logged in:', user.email);
       }
     } else {
       // Fallback to mock data if MongoDB not connected

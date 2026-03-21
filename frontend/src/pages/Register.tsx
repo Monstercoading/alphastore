@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { showNotification } from '../assets/notifications';
+import { initiateGoogleSignInWithFlow } from '../config/googleAuth';
+import { showErrorToast } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import Loading from '../components/Loading';
 
@@ -46,7 +47,7 @@ const Register: React.FC = () => {
       
       if (existingUser) {
         setError('هذا الحساب مسجل من قبل بالفعل');
-        showNotification('هذا الحساب مسجل من قبل بالفعل', 'error');
+        showErrorToast('هذا الحساب مسجل من قبل بالفعل');
         return;
       }
       
@@ -54,24 +55,19 @@ const Register: React.FC = () => {
       navigateWithDelay('/', 2500);
     } catch (error: any) {
       setError(error.response?.data?.message || 'فشل إنشاء الحساب');
-      showNotification(error.response?.data?.message || 'فشل إنشاء الحساب', 'error');
+      showErrorToast(error.response?.data?.message || 'فشل إنشاء الحساب');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      clearError();
-      await loginWithGoogle();
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'فشل تسجيل الدخول عبر Google');
-      showNotification(error.response?.data?.message || 'فشل تسجيل الدخول عبر Google', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleSignup = () => {
+    setLoading(true);
+    setError('');
+    clearError();
+    
+    // Use signup flow for Google OAuth
+    initiateGoogleSignInWithFlow('signup');
   };
 
   return (
@@ -252,7 +248,7 @@ const Register: React.FC = () => {
 
             <div className="mt-6">
               <button
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleSignup}
                 disabled={loading || state.isLoading}
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               >

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { showNotification } from '../assets/notifications';
+import { initiateGoogleSignInWithFlow } from '../config/googleAuth';
+import { showErrorToast } from '../utils/toast';
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import Loading from '../components/Loading';
 
@@ -34,24 +35,19 @@ const Login: React.FC = () => {
       navigateWithDelay('/', 2500);
     } catch (error: any) {
       setError(error.response?.data?.message || 'فشل تسجيل الدخول');
-      showNotification(error.response?.data?.message || 'فشل تسجيل الدخول', 'error');
+      showErrorToast(error.response?.data?.message || 'فشل تسجيل الدخول');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      clearError();
-      await loginWithGoogle();
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'فشل تسجيل الدخول عبر Google');
-      showNotification(error.response?.data?.message || 'فشل تسجيل الدخول عبر Google', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    setLoading(true);
+    setError('');
+    clearError();
+    
+    // Use login flow for Google OAuth
+    initiateGoogleSignInWithFlow('login');
   };
 
   return (
