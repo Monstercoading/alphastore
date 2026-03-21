@@ -155,6 +155,8 @@ const ServerStatusDashboard: React.FC = () => {
   const clearLogs = () => {
     setSocketLogs([]);
   };
+
+  const testBackendConnection = async (): Promise<void> => {
     const startTime = Date.now();
     
     try {
