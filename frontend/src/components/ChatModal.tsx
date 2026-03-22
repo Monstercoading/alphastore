@@ -479,7 +479,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
           if (b._id === data.conversationId) return 1;
           return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
         });
-      };
+      });
+    };
 
     const handleReceiveMessage = (data: any) => {
       console.log('📩 FRONTEND: Message received via socket:', data);
