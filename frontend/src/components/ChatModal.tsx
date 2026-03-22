@@ -69,6 +69,17 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     return conversation.productName || 'الدعم الفني';
   };
 
+  const getOrderInfo = (conversation: Conversation) => {
+    if (conversation.orderId) {
+      return {
+        id: conversation.orderId._id,
+        total: conversation.orderId.totalAmount,
+        date: conversation.orderId.createdAt
+      };
+    }
+    return null;
+  };
+
   const isCurrentUser = (senderId: string) => {
     return senderId === state.user?.id;
   };
@@ -438,6 +449,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                         <p className="text-sm text-gray-400 truncate mb-1">
                           {conversation.customerName}
                         </p>
+                        {state.user?.role === 'admin' && getOrderInfo(conversation) && (
+                          <p className="text-xs text-blue-400 truncate mb-1">
+                            طلب #{getOrderInfo(conversation)?.id?.slice(-8)} - ${getOrderInfo(conversation)?.total}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-500 truncate">
                           {conversation.lastMessage}
                         </p>

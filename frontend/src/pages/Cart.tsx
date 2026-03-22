@@ -42,7 +42,7 @@ const Cart: React.FC = () => {
     try {
       console.log('Opening support chat...');
       
-      // If orderId is provided, create conversation for that order
+      // Only create conversation if orderId is provided
       if (orderId) {
         console.log('Creating conversation for order:', orderId);
         const conversation = await conversationAPI.createConversation(orderId);
@@ -53,18 +53,8 @@ const Cart: React.FC = () => {
         localStorage.setItem('newConversationId', conversation._id);
         setShowChatModal(true);
       } else {
-        // Create a general support conversation
-        console.log('Creating general support conversation...');
-        try {
-          const conversation = await conversationAPI.createConversation('general-support');
-          console.log('General conversation created:', conversation);
-          showSuccessToast('تم فتح المحادثة مع الدعم الفني');
-          localStorage.setItem('newConversationId', conversation._id);
-          setShowChatModal(true);
-        } catch (generalError) {
-          console.log('Failed to create general conversation, opening modal anyway...');
-          setShowChatModal(true);
-        }
+        // Don't allow general conversations
+        showErrorToast('يمكنك فقط التواصل مع الدعم الفني بخصوص طلبات قيد الانتظار');
       }
     } catch (error: any) {
       console.error('Error opening chat:', error);
@@ -207,26 +197,15 @@ const Cart: React.FC = () => {
             </div>
             <h3 className="text-xl font-semibold text-white mb-3">لا توجد طلبات</h3>
             <p className="text-gray-400 mb-6">لم تقم بإنشاء أي طلبات بعد</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => handleSupport()}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                تواصل مع الدعم الفني
-              </button>
-              <Link
-                to="/"
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001 1v4a1 1 0 001 1h3" />
-                </svg>
-                تصفح المنتجات
-              </Link>
-            </div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001 1v4a1 1 0 001 1h3" />
+              </svg>
+              تصفح المنتجات
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">
@@ -274,15 +253,17 @@ const Cart: React.FC = () => {
                           <p className="text-2xl font-bold text-green-400">${order.totalAmount}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleSupport(order._id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            تواصل مع الدعم الفني
-                          </button>
+                          {order.status === 'pending' && (
+                            <button
+                              onClick={() => handleSupport(order._id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              تواصل مع الدعم الفني
+                            </button>
+                          )}
                           <div className="text-sm text-gray-400">
                             {order.user.firstName} {order.user.lastName}
                           </div>
