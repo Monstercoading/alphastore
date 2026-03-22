@@ -1,5 +1,8 @@
 import { conversationAPI } from './conversationAPI';
 
+// 🔧 Use same backend URL as api.ts
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+
 export interface Notification {
   id: string;
   type: 'conversation' | 'order' | 'discount' | 'system';
