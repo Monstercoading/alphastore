@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toast';
 import { SocketService } from '../services/socketService';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { conversationAPI } from '../services/conversationAPI';
+import { socketService } from '../services/socketService';
 
 interface TestResult {
   name: string;
@@ -41,10 +45,19 @@ interface ServerStatus {
     error?: string;
     message?: string;
   };
+  conversations: {
+    auth: TestResult;
+    customerConversations: TestResult;
+    adminConversations: TestResult;
+    createConversation: TestResult;
+    sendMessage: TestResult;
+    tokenValidation: TestResult;
+  };
 }
 
 const ServerStatusDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { state } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [socketLogs, setSocketLogs] = useState<SocketLog[]>([]);
   const [isMonitoringSocket, setIsMonitoringSocket] = useState(false);
@@ -63,6 +76,14 @@ const ServerStatusDashboard: React.FC = () => {
     frontend: {
       url: window.location.origin,
       status: 'pending'
+    },
+    conversations: {
+      auth: { name: 'Authentication Check', status: 'pending', message: 'Checking...', path: '/auth/verify' },
+      customerConversations: { name: 'Customer Conversations', status: 'pending', message: 'Checking...', path: '/conversations/customer' },
+      adminConversations: { name: 'Admin Conversations', status: 'pending', message: 'Checking...', path: '/conversations/admin' },
+      createConversation: { name: 'Create Conversation', status: 'pending', message: 'Checking...', path: '/conversations' },
+      sendMessage: { name: 'Send Message', status: 'pending', message: 'Checking...', path: '/conversations/:id/messages' },
+      tokenValidation: { name: 'Token Validation', status: 'pending', message: 'Checking...', path: 'N/A' }
     }
   });
 
@@ -374,6 +395,280 @@ const ServerStatusDashboard: React.FC = () => {
     }
   };
 
+  const testConversationSystem = async () => {
+    console.log('🔍 Starting comprehensive conversation system test...');
+    
+    // 1. Test Authentication Status
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && user) {
+      const tokenType = token.includes('admin-signature') ? 'Admin' : token.includes('mock-jwt-token') ? 'Mock' : 'Unknown';
+      
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          auth: {
+            name: 'Authentication Check',
+            status: 'success',
+            message: 'Token exists locally',
+            path: '/auth/verify',
+            details: {
+              hasToken: !!token,
+              tokenLength: token.length,
+              tokenType,
+              userEmail: user ? JSON.parse(user).email : 'N/A',
+              userRole: user ? JSON.parse(user).role : 'N/A'
+            }
+          }
+        }
+      }));
+    } else {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          auth: {
+            name: 'Authentication Check',
+            status: 'error',
+            message: 'No authentication data found',
+            path: '/auth/verify',
+            details: { hasToken: !!token, hasUser: !!user }
+          }
+        }
+      }));
+    }
+
+    // 2. Test Token Validation
+    try {
+      const response = await api.get('/auth/verify');
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          tokenValidation: {
+            name: 'Token Validation',
+            status: 'success',
+            message: 'Token is valid on server',
+            path: 'N/A',
+            details: { 
+              serverValidation: true,
+              responseStatus: response.status,
+              userData: response.data 
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          tokenValidation: {
+            name: 'Token Validation',
+            status: 'error',
+            message: 'Token validation failed on server',
+            path: 'N/A',
+            details: {
+              errorStatus: error.response?.status,
+              errorMessage: error.message,
+              isAuthError: error.response?.status === 401,
+              isTokenExpired: error.message?.includes('expired'),
+              isTokenInvalid: error.message?.includes('invalid') || error.message?.includes('JsonWebTokenError'),
+              tokenType: token?.includes('admin-signature') ? 'Admin' : token?.includes('mock-jwt-token') ? 'Mock' : 'Unknown'
+            }
+          }
+        }
+      }));
+    }
+
+    // 3. Test Customer Conversations
+    try {
+      const response = await conversationAPI.getCustomerConversations();
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          customerConversations: {
+            name: 'Customer Conversations',
+            status: 'success',
+            message: `Retrieved ${Array.isArray(response) ? response.length : 0} conversations`,
+            path: '/conversations/customer',
+            details: {
+              conversationsCount: Array.isArray(response) ? response.length : 'N/A',
+              sampleData: Array.isArray(response) ? response.slice(0, 2) : response,
+              isArray: Array.isArray(response)
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          customerConversations: {
+            name: 'Customer Conversations',
+            status: 'error',
+            message: 'Failed to fetch customer conversations',
+            path: '/conversations/customer',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isNotFound: error.response?.status === 404,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    // 4. Test Admin Conversations
+    try {
+      const response = await conversationAPI.getAdminConversations();
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          adminConversations: {
+            name: 'Admin Conversations',
+            status: 'success',
+            message: `Retrieved ${Array.isArray(response) ? response.length : 0} conversations`,
+            path: '/conversations/admin',
+            details: {
+              conversationsCount: Array.isArray(response) ? response.length : 'N/A',
+              sampleData: Array.isArray(response) ? response.slice(0, 2) : response,
+              isArray: Array.isArray(response)
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          adminConversations: {
+            name: 'Admin Conversations',
+            status: 'error',
+            message: 'Failed to fetch admin conversations',
+            path: '/conversations/admin',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isForbidden: error.response?.status === 403,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    // 5. Test Create Conversation
+    try {
+      // Use a mock order ID for testing
+      const mockOrderId = 'test-order-' + Date.now();
+      const response = await conversationAPI.createConversation(mockOrderId);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          createConversation: {
+            name: 'Create Conversation',
+            status: 'success',
+            message: 'Conversation created successfully',
+            path: '/conversations',
+            details: {
+              conversationId: response._id,
+              orderId: response.orderId,
+              status: response.status,
+              createdAt: response.createdAt
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          createConversation: {
+            name: 'Create Conversation',
+            status: 'error',
+            message: 'Failed to create conversation',
+            path: '/conversations',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isValidationError: error.response?.status === 400,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    // 6. Test Send Message (will likely fail without a real conversation)
+    try {
+      // Try to send a test message - this will likely fail but we can see the error
+      const testConversationId = 'test-conversation-' + Date.now();
+      const testMessage = {
+        content: 'Test message from system check',
+        senderType: 'customer'
+      };
+      
+      const response = await api.post(`/conversations/${testConversationId}/messages`, testMessage);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          sendMessage: {
+            name: 'Send Message',
+            status: 'success',
+            message: 'Message sent successfully',
+            path: `/conversations/${testConversationId}/messages`,
+            details: {
+              messageId: response.data._id,
+              conversationId: testConversationId,
+              content: testMessage.content
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          sendMessage: {
+            name: 'Send Message',
+            status: 'error',
+            message: 'Failed to send message (expected without valid conversation)',
+            path: '/conversations/:id/messages',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isNotFound: error.response?.status === 404,
+              isValidationError: error.response?.status === 400,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    console.log('✅ Conversation system test completed');
+  };
+
   const testFrontend = async (): Promise<void> => {
     try {
       const response = await fetch(`${serverStatus.frontend.url}/`, {
@@ -421,7 +716,15 @@ const ServerStatusDashboard: React.FC = () => {
       backend: { ...prev.backend, status: 'pending' },
       socket: { ...prev.socket, status: 'pending', connected: false },
       apis: [],
-      frontend: { ...prev.frontend, status: 'pending' }
+      frontend: { ...prev.frontend, status: 'pending' },
+      conversations: {
+        auth: { name: 'Authentication Check', status: 'pending', message: 'Checking...', path: '/auth/verify' },
+        customerConversations: { name: 'Customer Conversations', status: 'pending', message: 'Checking...', path: '/conversations/customer' },
+        adminConversations: { name: 'Admin Conversations', status: 'pending', message: 'Checking...', path: '/conversations/admin' },
+        createConversation: { name: 'Create Conversation', status: 'pending', message: 'Checking...', path: '/conversations' },
+        sendMessage: { name: 'Send Message', status: 'pending', message: 'Checking...', path: '/conversations/:id/messages' },
+        tokenValidation: { name: 'Token Validation', status: 'pending', message: 'Checking...', path: 'N/A' }
+      }
     }));
 
     // Run tests in parallel
@@ -439,6 +742,9 @@ const ServerStatusDashboard: React.FC = () => {
       setServerStatus(prev => ({ ...prev, apis: [...apiResults] }));
     }
 
+    // Test conversation system
+    await testConversationSystem();
+
     setIsRunning(false);
     
     // Calculate overall status
@@ -448,7 +754,9 @@ const ServerStatusDashboard: React.FC = () => {
       serverStatus.frontend.status === 'success' &&
       apiResults.every(api => api.status === 'success');
 
-    if (allSuccess) {
+    const conversationSuccess = Object.values(serverStatus.conversations).every(conv => conv.status === 'success');
+
+    if (allSuccess && conversationSuccess) {
       showSuccessToast('✅ جميع الاختبارات نجحت! النظام يعمل بشكل كامل');
     } else {
       showErrorToast('❌ هناك بعض المشاكل. راجع النتائج أدناه');
@@ -587,6 +895,46 @@ const ServerStatusDashboard: React.FC = () => {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Conversation System Testing */}
+        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+          <h2 className="text-xl font-semibold mb-4">💬 Conversation System Testing</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.values(serverStatus.conversations).map((conv, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg border-2 ${getStatusColor(conv.status)}`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">{conv.name}</h3>
+                  <span>{getStatusIcon(conv.status)}</span>
+                </div>
+                <p className="text-sm text-gray-600 mb-1">{conv.path}</p>
+                <p className="text-sm">{conv.message}</p>
+                {conv.details && (
+                  <details className="mt-2">
+                    <summary className="text-xs cursor-pointer text-blue-600">Show Details</summary>
+                    <pre className="text-xs mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                      {JSON.stringify(conv.details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-800 mb-2">🔍 Conversation System Analysis</h4>
+            <div className="text-sm text-blue-700">
+              <p><strong>Authentication:</strong> {serverStatus.conversations.auth.status === 'success' ? '✅ Token exists locally' : '❌ No auth data'}</p>
+              <p><strong>Token Validation:</strong> {serverStatus.conversations.tokenValidation.status === 'success' ? '✅ Server accepts token' : '❌ Server rejects token'}</p>
+              <p><strong>Customer API:</strong> {serverStatus.conversations.customerConversations.status === 'success' ? '✅ Can fetch conversations' : '❌ Cannot fetch conversations'}</p>
+              <p><strong>Admin API:</strong> {serverStatus.conversations.adminConversations.status === 'success' ? '✅ Admin access working' : '❌ Admin access failed'}</p>
+              <p><strong>Create Conversation:</strong> {serverStatus.conversations.createConversation.status === 'success' ? '✅ Can create conversations' : '❌ Cannot create conversations'}</p>
+              <p><strong>Send Message:</strong> {serverStatus.conversations.sendMessage.status === 'success' ? '✅ Can send messages' : '❌ Cannot send messages'}</p>
+            </div>
           </div>
         </div>
 
