@@ -479,6 +479,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
           if (b._id === data.conversationId) return 1;
           return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
         });
+      };
+
+    const handleReceiveMessage = (data: any) => {
+      console.log('📩 FRONTEND: Message received via socket:', data);
+      console.log('📩 FRONTEND: Current conversation ID from ref:', conversationIdRef.current);
+      
+      // Normalize message data structure
+      const messageData = normalizeMessage(data);
+      console.log('🔧 FRONTEND: Normalized message data:', messageData);
+      console.log('📩 FRONTEND: Match check:', messageData.conversationId === conversationIdRef.current);
+      
+      if (messageData.conversationId === conversationIdRef.current) {
+        console.log('📩 FRONTEND: Adding message to current chat');
+        setMessages(prev => {
+          // Check if message already exists to prevent duplicates
+          const exists = prev.some(msg => msg._id === messageData._id);
+          if (exists) {
             console.log('📩 FRONTEND: Duplicate detected, skipping');
             return prev;
           }
