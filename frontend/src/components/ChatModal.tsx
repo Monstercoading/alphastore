@@ -154,9 +154,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       console.log('Fetching conversations for role:', state.user?.role);
-      const response = state.user?.role === 'admin' 
-        ? await conversationAPI.getAdminConversations()
-        : await conversationAPI.getCustomerConversations();
+      
+      let response;
+      if (state.user?.role === 'admin') {
+        response = await conversationAPI.getAdminConversations();
+      } else {
+        // For customers, get conversations where they are participants
+        response = await conversationAPI.getCustomerConversations();
+        
+        // Filter to ensure we only get conversations where current user is involved
+        if (Array.isArray(response)) {
+          response = response.filter(conv => 
+            conv.customerId === state.user?.id || 
+            conv.participants?.some((p: any) => p.id === state.user?.id)
+          );
+        }
+      }
+      
       console.log('Conversations response:', response);
       setConversations(response);
     } catch (error: any) {
@@ -232,6 +246,9 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
         senderId: state.user?.id || 'guest'
       });
+      
+      // Auto-refresh sidebar when new message is sent
+      fetchConversations();
       
       setTimeout(() => {
         setMessageStatuses(prev => ({ ...prev, [message._id]: 'delivered' }));
@@ -344,6 +361,16 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     socketService.onNewMessage((data: any) => {
       if (data.conversationId === selectedConversation) {
         setMessages(prev => [...prev, data.message]);
+        scrollToBottom();
+      }
+      fetchConversations();
+    });
+
+    // Add real-time message listener for instant updates
+    socketService.on('receiveMessage', (data: any) => {
+      console.log('📨 Received real-time message:', data);
+      if (data.conversationId === selectedConversation) {
+        setMessages(prev => [...prev, data]);
         scrollToBottom();
       }
       fetchConversations();
@@ -578,7 +605,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
                   {messages.map((message, index) => {
-                    const isMyMessage = isCurrentUser(message.senderId || '');
+                    const isMyMessage = message.senderId === state.user?.id;
                     return (
                       <div
                         key={message._id || index}
@@ -588,8 +615,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                           <div
                             className={`px-4 py-3 rounded-2xl ${
                               isMyMessage
-                                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
-                                : 'bg-[#1a1d24] text-gray-200 rounded-bl-sm border border-gray-700'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-sm'
+                                : 'bg-gray-200 text-gray-800 rounded-bl-sm'
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
