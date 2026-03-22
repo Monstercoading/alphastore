@@ -40,6 +40,12 @@ const Cart: React.FC = () => {
 
   const handleSupport = async (orderId?: string) => {
     try {
+      // Check if user is authenticated
+      if (!state.isAuthenticated || !state.token) {
+        showErrorToast('يجب تسجيل الدخول للتواصل مع الدعم الفني');
+        return;
+      }
+      
       console.log('Opening support chat...');
       
       // Only create conversation if orderId is provided
@@ -58,7 +64,11 @@ const Cart: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error opening chat:', error);
-      showErrorToast('فشل فتح المحادثة. يرجى المحاولة مرة أخرى.');
+      if (error.response?.status === 401) {
+        showErrorToast('يجب تسجيل الدخول للتواصل مع الدعم الفني');
+      } else {
+        showErrorToast('فشل فتح المحادثة. يرجى المحاولة مرة أخرى.');
+      }
     }
   };
 
