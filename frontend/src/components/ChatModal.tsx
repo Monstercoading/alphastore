@@ -54,8 +54,14 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [messageStatuses, setMessageStatuses] = useState<Record<string, 'sending' | 'sent' | 'delivered' | 'read'>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const conversationIdRef = useRef<string | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    conversationIdRef.current = selectedConversation;
+    console.log('🔧 FRONTEND: Updated conversationIdRef to:', selectedConversation);
+  }, [selectedConversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -473,24 +479,6 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
           if (b._id === data.conversationId) return 1;
           return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
         });
-      });
-    };
-
-    const handleReceiveMessage = (data: any) => {
-      console.log('📩 FRONTEND: Message received via socket:', data);
-      console.log('📩 FRONTEND: Current conversation ID:', selectedConversation);
-      
-      // Normalize message data structure
-      const messageData = normalizeMessage(data);
-      console.log('� FRONTEND: Normalized message data:', messageData);
-      console.log('� FRONTEND: Match check:', messageData.conversationId === selectedConversation);
-      
-      if (messageData.conversationId === selectedConversation) {
-        console.log('📩 FRONTEND: Adding message to current chat');
-        setMessages(prev => {
-          // Check if message already exists to prevent duplicates
-          const exists = prev.some(msg => msg._id === messageData._id);
-          if (exists) {
             console.log('📩 FRONTEND: Duplicate detected, skipping');
             return prev;
           }
