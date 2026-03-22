@@ -709,13 +709,15 @@ app.get('/api/admin/notifications', (req, res) => {
   }
   global.adminNotificationConnections.add(res);
   
-  // Remove connection on client disconnect
+  // Keep connection alive with periodic pings
+  const keepAlive = setInterval(() => {
+    res.write('data: {"type":"PING","timestamp":"' + new Date().toISOString() + '"}\n\n');
   }, 30000);
   
   // Handle client disconnect
   req.on('close', () => {
     clearInterval(keepAlive);
-    adminNotificationListeners = adminNotificationListeners.filter(l => l.id !== listener.id);
+    global.adminNotificationConnections.delete(res);
     console.log('Admin notification client disconnected');
   });
 });
