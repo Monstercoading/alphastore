@@ -165,8 +165,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         // Filter to ensure we only get conversations where current user is involved
         if (Array.isArray(response)) {
           response = response.filter(conv => 
-            conv.customerId === state.user?.id || 
-            conv.participants?.some((p: any) => p.id === state.user?.id)
+            conv.customerId === state.user?.id
           );
         }
       }
