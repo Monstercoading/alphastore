@@ -45,44 +45,45 @@ router.get('/admin', auth, async (req, res) => {
   try {
     console.log('Admin conversations request from user:', req.user);
     
-    // Check if user is admin
     if (req.user.role !== 'admin') {
       console.log('Access denied - user is not admin:', req.user.role);
       return res.status(403).json({ error: 'Access denied - admin only' });
     }
 
-    console.log('Fetching admin conversations...');
-    const conversations = await Conversation.find({ status: 'open' })
-      .populate('orderId', 'totalAmount createdAt')
+    const conversations = await Conversation.find({})
       .populate('customerId', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+      .populate('orderId', 'totalAmount createdAt')
+      .sort({ lastMessageTime: -1 })
+      .limit(100); // Limit for performance
     
-    // Format conversations to handle missing dates
+    // Format for frontend
     const formattedConversations = conversations.map(conv => ({
-      ...conv.toObject(),
-      lastMessageTime: conv.lastMessageTime || conv.createdAt,
+      _id: conv._id,
+      orderId: conv.orderId,
+      customerId: conv.customerId,
       customerName: conv.customerName || (conv.customerId?.firstName && conv.customerId?.lastName 
         ? `${conv.customerId.firstName} ${conv.customerId.lastName}` 
-        : 'زائر'),
-      customerEmail: conv.customerEmail || conv.customerId?.email || 'guest@example.com'
+        : 'Unknown Customer'),
+      customerEmail: conv.customerEmail || conv.customerId?.email || 'guest@example.com',
+      status: conv.status,
+      lastMessage: conv.lastMessage,
+      lastMessageTime: conv.lastMessageTime,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt
     }));
     
-    console.log('Admin conversations found:', formattedConversations.length);
     res.json(formattedConversations);
   } catch (error) {
-    console.error('Error fetching admin conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch conversations: ' + error.message });
+    console.error('Admin conversations error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 
 // Get conversations for customer
 router.get('/customer', auth, async (req, res) => {
   try {
-    console.log('🔍 Fetching customer conversations for user:', req.user.email, 'ID:', req.user.id);
-    
-    // Check if user is admin - return empty array for admins
+    // Fast path - if admin, return immediately
     if (req.user.role === 'admin') {
-      console.log('👨‍💼 Admin user accessing customer conversations - returning empty array');
       return res.json([]);
     }
     
@@ -90,13 +91,13 @@ router.get('/customer', auth, async (req, res) => {
       customerId: req.user.id 
     })
       .populate('orderId', 'totalAmount createdAt')
-      .sort({ lastMessageTime: -1 });
+      .sort({ lastMessageTime: -1 })
+      .limit(50); // Limit for performance
     
-    console.log('✅ Found conversations for customer:', conversations.length);
     res.json(conversations);
   } catch (error) {
-    console.error('❌ Error fetching customer conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
+    console.error('Customer conversations error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 
