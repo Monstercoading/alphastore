@@ -81,12 +81,23 @@ class SocketService {
   }
 
   joinConversation(conversationId: string) {
-    console.log('🏠 Joining conversation room:', conversationId);
-    if (this.socket) {
+    // Auto-connect if not connected
+    if (!this.socket) {
+      console.log('🔌 Socket not connected, auto-connecting...');
+      this.connect();
+      
+      // Wait for connection then join
+      setTimeout(() => {
+        if (this.socket) {
+          this.socket.emit('joinConversation', conversationId);
+          console.log('✅ Sent joinConversation event after auto-connect');
+        } else {
+          console.error('❌ Still cannot join conversation - socket connection failed');
+        }
+      }, 1000);
+    } else {
       this.socket.emit('joinConversation', conversationId);
       console.log('✅ Sent joinConversation event');
-    } else {
-      console.error('❌ Cannot join conversation - socket not connected');
     }
   }
 

@@ -196,7 +196,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const createConversationWithLastOrder = async () => {
     try {
       // Fetch user's orders to find the last one
-      const ordersResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com'}/api/orders`, {
+      const ordersResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api'}/orders`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -568,8 +568,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (selectedConversation) {
-      // Join room immediately when opening chat
+      // Ensure socket is connected before joining
       console.log('🚪 Joining conversation room:', selectedConversation);
+      socketService.connect(); // Auto-connect if not connected
+      
+      // Join room immediately when opening chat
       socketService.emit('joinRoom', selectedConversation);
       socketService.joinConversation(selectedConversation);
       
@@ -585,6 +588,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       // 🔧 FIXED: Don't auto-logout on modal open, just try to fetch conversations
       console.log('ChatModal opened - attempting to fetch conversations');
+      
+      // Ensure socket is connected when modal opens
+      socketService.connect();
+      console.log('🔌 Socket auto-connected on modal open');
+      
       fetchConversations();
       
       // Check for new conversation ID from localStorage
