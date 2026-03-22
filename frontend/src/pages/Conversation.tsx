@@ -29,7 +29,7 @@ const Conversation: React.FC = () => {
   };
 
   const isCurrentUser = (senderId: string) => {
-    return senderId === state.user?.id;
+    return senderId === state.user?._id;
   };
 
   useEffect(() => {
@@ -246,10 +246,10 @@ const Conversation: React.FC = () => {
         conversationId: id,
         message,
         senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
-        senderId: state.user?.id || 'guest'
+        senderId: state.user?._id || 'guest'
       });
       
-      setMessages(prev => [...prev, message]);
+      // Don't add to messages manually - rely on socket
       scrollToBottom();
       showSuccessToast('تم إرسال الصورة');
     } catch (error) {

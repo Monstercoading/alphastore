@@ -81,7 +81,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   };
 
   const isCurrentUser = (senderId: string) => {
-    return senderId === state.user?.id;
+    return senderId === state.user?._id;
   };
 
   const formatTime = (dateString: string | undefined | Date) => {
@@ -297,8 +297,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         senderId: state.user?._id || 'guest'
       });
       
-      // Auto-refresh sidebar when new message is sent
-      fetchConversations();
+      // Don't add to messages manually - rely on socket
+      // Removed: setMessages(prev => [...prev, message]);
       
       scrollToBottom();
     } catch (error) {
@@ -321,9 +321,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         conversationId: selectedConversation,
         message,
         senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
-        senderId: state.user?.id || 'guest'
+        senderId: state.user?._id || 'guest'
       });
       
+      // Don't add to messages manually - rely on socket
       scrollToBottom();
     } catch (error) {
       console.error('Error sending image:', error);
@@ -433,7 +434,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     const handleReceiveMessage = (data: any) => {
       console.log('📨 Real-time message received:', data);
       if (data.conversationId === selectedConversation) {
-        setMessages(prev => [...prev, data]);
+        setMessages(prev => {
+          // Check if message already exists to prevent duplicates
+          const exists = prev.some(msg => msg._id === data._id);
+          if (exists) return prev;
+          return [...prev, data];
+        });
         scrollToBottom();
       }
       
@@ -498,10 +504,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (selectedConversation) {
       // Join room immediately when opening chat
+      console.log('🚪 Joining conversation room:', selectedConversation);
       socketService.emit('joinRoom', selectedConversation);
       socketService.joinConversation(selectedConversation);
       
       return () => {
+        console.log('🚪 Leaving conversation room:', selectedConversation);
         socketService.emit('leaveRoom', selectedConversation);
         socketService.leaveConversation(selectedConversation);
       };
