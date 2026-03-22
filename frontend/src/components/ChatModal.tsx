@@ -740,10 +740,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                             )}
                           </div>
                           <div className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
-                            isMyMessage ? 'justify-end' : 'justify-start'
+                            isMe ? 'justify-end' : 'justify-start'
                           }`}>
                             <span>{formatTime(message.createdAt)}</span>
-                            {isMyMessage && (
+                            {isMe && (
                               <span className="text-red-400">
                                 {getStatusIcon(getMessageStatus(message._id))}
                               </span>
