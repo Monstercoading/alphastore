@@ -78,16 +78,25 @@ router.get('/admin', auth, async (req, res) => {
 // Get conversations for customer
 router.get('/customer', auth, async (req, res) => {
   try {
+    console.log('🔍 Fetching customer conversations for user:', req.user.email, 'ID:', req.user.id);
+    
+    // Check if user is admin - return empty array for admins
+    if (req.user.role === 'admin') {
+      console.log('👨‍💼 Admin user accessing customer conversations - returning empty array');
+      return res.json([]);
+    }
+    
     const conversations = await Conversation.find({ 
       customerId: req.user.id 
     })
       .populate('orderId', 'totalAmount createdAt')
       .sort({ lastMessageTime: -1 });
     
+    console.log('✅ Found conversations for customer:', conversations.length);
     res.json(conversations);
   } catch (error) {
-    console.error('Error fetching customer conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch conversations' });
+    console.error('❌ Error fetching customer conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
   }
 });
 
