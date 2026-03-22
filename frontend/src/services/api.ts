@@ -102,4 +102,4 @@ export const uploadAPI = {
 };
 
 export default api;
-" " 
+export { api }; 
