@@ -147,9 +147,18 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         : await conversationAPI.getCustomerConversations();
       console.log('Conversations response:', response);
       setConversations(response);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching conversations:', error);
-      showErrorToast('فشل في تحميل المحادثات');
+      // Check if it's a network error
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
+        showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else if (error.response?.status === 401) {
+        showErrorToast('يجب تسجيل الدخول للوصول إلى المحادثات');
+      } else if (error.response?.status === 404) {
+        showErrorToast('خدمة الدعم الفني غير متاحة حالياً');
+      } else {
+        showErrorToast('فشل في تحميل المحادثات');
+      }
     } finally {
       setLoading(false);
     }
@@ -166,9 +175,13 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       }
       
       scrollToBottom();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
-      showErrorToast('فشل في تحميل الرسائل');
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
+        showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else {
+        showErrorToast('فشل في تحميل الرسائل');
+      }
     }
   };
 
@@ -258,9 +271,15 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         setSelectedConversation(null);
         setMessages([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error closing conversation:', error);
-      showErrorToast('فشل إغلاق المحادثة');
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
+        showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else if (error.response?.status === 404) {
+        showErrorToast('المحادثة غير موجودة');
+      } else {
+        showErrorToast('فشل إغلاق المحادثة');
+      }
     }
   };
 
