@@ -4,7 +4,7 @@ import { showSuccessToast, showErrorToast, showToastWithAction, formatWelcomeMes
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import { userAPI } from '../services/userAPI';
 import { GOOGLE_AUTH_CONFIG, initiateGoogleSignIn } from '../config/googleAuth';
-import { socketService } from '../services/socketService';
+import socketService from '../services/socketService';
 
 interface User {
   _id: string;

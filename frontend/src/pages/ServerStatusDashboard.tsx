@@ -4,8 +4,7 @@ import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toast'
 import { SocketService } from '../services/socketService';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { conversationAPI } from '../services/conversationAPI';
-import { socketService } from '../services/socketService';
+import socketService from '../services/socketService';
 
 interface TestResult {
   name: string;

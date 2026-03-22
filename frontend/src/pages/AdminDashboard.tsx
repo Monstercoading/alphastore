@@ -8,7 +8,7 @@ import { playNotificationSound, playMessageSound } from '../utils/notificationSo
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 import { STATIC_PRODUCTS } from '../data/products-data';
 import { API_URL } from '../config/api';
-import { socketService } from '../services/socketService';
+import socketService from '../services/socketService';
 import ChatModal from '../components/ChatModal';
 
 interface Game {

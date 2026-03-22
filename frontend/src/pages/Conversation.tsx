@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { conversationAPI, ConversationWithMessages, Message } from '../services/conversationAPI';
-import { socketService } from '../services/socketService';
+import socketService from '../services/socketService';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 const Conversation: React.FC = () => {
