@@ -581,35 +581,170 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 4. Set remaining tests to pending/skipped for now
-    console.log('4️⃣ Skipping remaining tests for debugging...');
-    setServerStatus(prev => ({
-      ...prev,
-      conversations: {
-        ...prev.conversations,
-        adminConversations: {
-          name: 'Admin Conversations',
-          status: 'pending',
-          message: 'Skipped for debugging',
-          path: '/conversations/admin',
-          details: { note: 'Test skipped to prevent hanging' }
-        },
-        createConversation: {
-          name: 'Create Conversation',
-          status: 'pending',
-          message: 'Skipped for debugging',
-          path: '/conversations',
-          details: { note: 'Test skipped to prevent hanging' }
-        },
-        sendMessage: {
-          name: 'Send Message',
-          status: 'pending',
-          message: 'Skipped for debugging',
-          path: '/conversations/:id/messages',
-          details: { note: 'Test skipped to prevent hanging' }
+    // 4. Test Admin Conversations (now enabled)
+    console.log('4️⃣ Testing admin conversations...');
+    try {
+      console.log('📡 Making API call to /conversations/admin...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await conversationAPI.getAdminConversations();
+      clearTimeout(timeoutId);
+      
+      console.log('✅ Admin conversations successful:', Array.isArray(response) ? response.length : 'non-array');
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          adminConversations: {
+            name: 'Admin Conversations',
+            status: 'success',
+            message: `Retrieved ${Array.isArray(response) ? response.length : 0} conversations`,
+            path: '/conversations/admin',
+            details: {
+              conversationsCount: Array.isArray(response) ? response.length : 'N/A',
+              sampleData: Array.isArray(response) ? response.slice(0, 2) : response,
+              isArray: Array.isArray(response)
+            }
+          }
         }
-      }
-    }));
+      }));
+    } catch (error: any) {
+      console.log('❌ Admin conversations failed:', error.message);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          adminConversations: {
+            name: 'Admin Conversations',
+            status: 'error',
+            message: 'Failed to fetch admin conversations',
+            path: '/conversations/admin',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isForbidden: error.response?.status === 403,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    // 5. Test Create Conversation (now enabled)
+    console.log('5️⃣ Testing create conversation...');
+    try {
+      console.log('📡 Making API call to /conversations...');
+      const mockOrderId = 'test-order-' + Date.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await conversationAPI.createConversation(mockOrderId);
+      clearTimeout(timeoutId);
+      
+      console.log('✅ Create conversation successful:', response._id);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          createConversation: {
+            name: 'Create Conversation',
+            status: 'success',
+            message: 'Conversation created successfully',
+            path: '/conversations',
+            details: {
+              conversationId: response._id,
+              orderId: response.orderId,
+              status: response.status,
+              createdAt: response.createdAt
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      console.log('❌ Create conversation failed:', error.message);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          createConversation: {
+            name: 'Create Conversation',
+            status: 'error',
+            message: 'Failed to create conversation',
+            path: '/conversations',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isValidationError: error.response?.status === 400,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
+
+    // 6. Test Send Message (now enabled)
+    console.log('6️⃣ Testing send message...');
+    try {
+      console.log('📡 Making API call to /conversations/:id/messages...');
+      const testConversationId = 'test-conversation-' + Date.now();
+      const testMessage = {
+        content: 'Test message from system check',
+        senderType: 'customer'
+      };
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await api.post(`/conversations/${testConversationId}/messages`, testMessage);
+      clearTimeout(timeoutId);
+      
+      console.log('✅ Send message successful:', response.data._id);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          sendMessage: {
+            name: 'Send Message',
+            status: 'success',
+            message: 'Message sent successfully',
+            path: `/conversations/${testConversationId}/messages`,
+            details: {
+              messageId: response.data._id,
+              conversationId: testConversationId,
+              content: testMessage.content
+            }
+          }
+        }
+      }));
+    } catch (error: any) {
+      console.log('❌ Send message failed:', error.message);
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          ...prev.conversations,
+          sendMessage: {
+            name: 'Send Message',
+            status: 'error',
+            message: 'Failed to send message (expected without valid conversation)',
+            path: '/conversations/:id/messages',
+            details: {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              message: error.message,
+              isAuthError: error.response?.status === 401,
+              isNotFound: error.response?.status === 404,
+              isValidationError: error.response?.status === 400,
+              isNetworkError: error.code === 'ECONNREFUSED'
+            }
+          }
+        }
+      }));
+    }
     
     console.log('✅ Conversation tests completed');
   };
