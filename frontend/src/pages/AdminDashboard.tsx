@@ -289,15 +289,11 @@ const AdminDashboard: React.FC = () => {
       socketService.on('newMessage', handleNewMessage);
 
       
-      // Set up polling for new conversations every 10 seconds (backup)
-      const pollInterval = setInterval(() => {
-        console.log('Polling conversations...');
-        loadConversations();
-      }, 10000);
-
+      // No polling - rely on socket only for real-time updates
+      // Removed: setInterval for polling conversations
+      
       return () => {
-        console.log('Cleaning up conversation polling');
-        clearInterval(pollInterval);
+        console.log('Cleaning up conversation listeners');
         socketService.off('newConversationMessage', handleNewConversationMessage);
         socketService.off('newMessage', handleNewMessage);
       };

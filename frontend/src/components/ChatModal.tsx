@@ -80,8 +80,45 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     return null;
   };
 
+  const normalizeMessage = (data: any) => {
+    // Handle wrapped message format: {message: {...}, conversationId, senderType}
+    if (data.message && !data.content) {
+      console.log('🔧 FRONTEND: Unwrapping message format');
+      return {
+        ...data.message,
+        conversationId: data.conversationId,
+        senderType: data.senderType,
+        timestamp: data.timestamp
+      };
+    }
+    // Handle direct message format: {_id, content, conversationId, ...}
+    return data;
+  };
+
+  const getCurrentUser = () => {
+    if (state.user) {
+      console.log('🔧 FRONTEND: Using state.user:', state.user?._id);
+      return state.user;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.decode(token);
+        const user = decoded?.user;
+        console.log('🔧 FRONTEND: Extracted user from token:', user?._id);
+        return user;
+      }
+    } catch (err) {
+      console.error('🔧 FRONTEND: Failed to extract user from token:', err);
+    }
+    return null;
+  };
+
   const isCurrentUser = (senderId: string) => {
-    return senderId === state.user?._id;
+    const currentUser = getCurrentUser();
+    return senderId === currentUser?._id;
   };
 
   const formatTime = (dateString: string | undefined | Date) => {
@@ -282,9 +319,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     const messageContent = newMessage.trim();
+    const currentUser = getCurrentUser();
+    
     console.log('📤 FRONTEND: Sending message:', messageContent.substring(0, 30));
     console.log('📤 FRONTEND: Conversation ID:', selectedConversation);
-    console.log('📤 FRONTEND: User ID:', state.user?._id);
+    console.log('📤 FRONTEND: Current User ID:', currentUser?._id);
     
     setNewMessage('');
     setSending(true);
@@ -298,8 +337,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       socketService.sendMessage({
         conversationId: selectedConversation,
         message,
-        senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
-        senderId: state.user?._id || 'guest'
+        senderType: currentUser?.role === 'admin' ? 'admin' : 'customer',
+        senderId: currentUser?._id || 'guest'
       });
       console.log('📤 FRONTEND: Message emitted via socket');
       
@@ -438,21 +477,25 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleReceiveMessage = (data: any) => {
-      console.log('� FRONTEND: Message received via socket:', data);
+      console.log('📩 FRONTEND: Message received via socket:', data);
       console.log('📩 FRONTEND: Current conversation ID:', selectedConversation);
-      console.log('📩 FRONTEND: Match check:', data.conversationId === selectedConversation);
       
-      if (data.conversationId === selectedConversation) {
+      // Normalize message data structure
+      const messageData = normalizeMessage(data);
+      console.log('� FRONTEND: Normalized message data:', messageData);
+      console.log('� FRONTEND: Match check:', messageData.conversationId === selectedConversation);
+      
+      if (messageData.conversationId === selectedConversation) {
         console.log('📩 FRONTEND: Adding message to current chat');
         setMessages(prev => {
           // Check if message already exists to prevent duplicates
-          const exists = prev.some(msg => msg._id === data._id);
+          const exists = prev.some(msg => msg._id === messageData._id);
           if (exists) {
             console.log('📩 FRONTEND: Duplicate detected, skipping');
             return prev;
           }
           console.log('📩 FRONTEND: Message added to state');
-          return [...prev, data];
+          return [...prev, messageData];
         });
         scrollToBottom();
       } else {
@@ -462,10 +505,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       // Move conversation to top and update last message
       setConversations(prev => {
         const updated = prev.map(conv => {
-          if (conv._id === data.conversationId) {
+          if (conv._id === messageData.conversationId) {
             return {
               ...conv,
-              lastMessage: data.content || 'New message',
+              lastMessage: messageData.content || 'New message',
               lastMessageTime: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             };
@@ -475,8 +518,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         
         // Move updated conversation to top
         return updated.sort((a, b) => {
-          if (a._id === data.conversationId) return -1;
-          if (b._id === data.conversationId) return 1;
+          if (a._id === messageData.conversationId) return -1;
+          if (b._id === messageData.conversationId) return 1;
           return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
         });
       });
@@ -507,15 +550,15 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     socketService.onUserTyping(handleUserTyping);
     socketService.onUserStopTyping(handleUserStopTyping);
 
-    // Cleanup function
+    // Cleanup function - only run on unmount
     return () => {
-      // Don't disconnect - just remove listeners
+      console.log('🔧 FRONTEND: Cleaning up socket listeners on unmount');
       socketService.off('newMessage', handleNewMessage);
       socketService.off('receiveMessage', handleReceiveMessage);
       socketService.off('userTyping', handleUserTyping);
       socketService.off('userStopTyping', handleUserStopTyping);
     };
-  }, [selectedConversation]);
+  }, []); // Empty dependencies - create once, never recreate
 
   useEffect(() => {
     if (selectedConversation) {
@@ -731,7 +774,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
                   {messages.map((message, index) => {
-                    const isMe = message.senderId === state.user?._id;
+                    const currentUser = getCurrentUser();
+                    const isMe = message.senderId === currentUser?._id;
                     return (
                       <div
                         key={message._id || index}
