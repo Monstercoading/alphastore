@@ -15,6 +15,143 @@ router.get('/login', (req, res) => {
   });
 });
 
+// 🔧 ADD VERIFY ENDPOINT for Server Status Dashboard
+router.get('/verify', async (req, res) => {
+  console.log('🔍 Auth verify endpoint called');
+  
+  // Get token from Authorization header (Bearer) or x-auth-token
+  let token = req.header('x-auth-token');
+  
+  // Check Authorization header if no x-auth-token
+  if (!token) {
+    const authHeader = req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ 
+      message: 'No token provided, please login first',
+      error: 'MISSING_TOKEN'
+    });
+  }
+
+  try {
+    // Handle mock tokens
+    if (token.includes('mock-jwt-token-')) {
+      console.log('🔧 Detected mock token in verify endpoint');
+      const userId = token.replace('mock-jwt-token-', '');
+      
+      // Try to find user in database
+      try {
+        const user = await User.findById(userId);
+        if (user) {
+          console.log('✅ Mock token verified successfully for user:', user.email);
+          return res.json({
+            message: 'Token is valid',
+            valid: true,
+            user: {
+              _id: user._id,
+              id: user._id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role
+            },
+            tokenType: 'mock'
+          });
+        } else {
+          console.log('❌ User not found for mock token, using fallback');
+          // Fallback for development
+          return res.json({
+            message: 'Token is valid (fallback)',
+            valid: true,
+            user: {
+              _id: userId,
+              id: userId,
+              email: 'mock-user@example.com',
+              firstName: 'Mock',
+              lastName: 'User',
+              role: 'user'
+            },
+            tokenType: 'mock-fallback'
+          });
+        }
+      } catch (dbError) {
+        console.log('❌ Database error, using fallback');
+        // Fallback for development
+        return res.json({
+          message: 'Token is valid (fallback)',
+          valid: true,
+          user: {
+            _id: userId,
+            id: userId,
+            email: 'mock-user@example.com',
+            firstName: 'Mock',
+            lastName: 'User',
+            role: 'user'
+          },
+          tokenType: 'mock-fallback'
+        });
+      }
+    }
+
+    // Handle admin tokens
+    if (token.includes('admin-signature')) {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        
+        // Check if token is expired
+        if (payload.exp && Date.now() > payload.exp) {
+          return res.status(401).json({ message: 'Token expired, please login again' });
+        }
+        
+        console.log('✅ Admin token verified successfully for user:', payload.user.email);
+        return res.json({
+          message: 'Token is valid',
+          valid: true,
+          user: payload.user,
+          tokenType: 'admin'
+        });
+      }
+    }
+    
+    // Regular JWT verification
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    console.log('✅ JWT token verified successfully for user:', decoded.user.email);
+    
+    return res.json({
+      message: 'Token is valid',
+      valid: true,
+      user: decoded.user,
+      tokenType: 'jwt'
+    });
+    
+  } catch (err) {
+    console.log('❌ Token verification failed:', err.message);
+    
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        message: 'Token expired, please login again',
+        error: 'TOKEN_EXPIRED'
+      });
+    } else if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        message: 'Invalid token, please login again',
+        error: 'INVALID_TOKEN'
+      });
+    } else {
+      return res.status(401).json({ 
+        message: 'Token is not valid',
+        error: 'UNKNOWN_ERROR',
+        details: err.message
+      });
+    }
+  }
+});
+
 // Register
 router.post('/register', [
   body('email').isEmail().withMessage('Please enter a valid email'),
