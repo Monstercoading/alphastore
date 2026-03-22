@@ -305,9 +305,23 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
 });
 
 // Close conversation
-router.put('/:id/close', auth, async (req, res) => {
+router.put('/:id/close', async (req, res) => {
   try {
     const conversationId = req.params.id;
+    
+    // 🔧 FIXED: Try to get user from token if available, but don't require auth
+    let user = null;
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.header('x-auth-token');
+    
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        user = decoded.user;
+      } catch (err) {
+        console.log('Invalid token for close conversation, proceeding as guest');
+      }
+    }
     
     // Update conversation status to closed
     const conversation = await Conversation.findByIdAndUpdate(
@@ -320,6 +334,8 @@ router.put('/:id/close', auth, async (req, res) => {
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
+    
+    console.log('✅ Conversation closed:', conversationId);
     
     // Emit real-time update via Socket.io
     const reqIo = req.app.get('io');

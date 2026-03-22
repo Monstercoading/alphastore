@@ -83,8 +83,8 @@ const messageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better performance
-conversationSchema.index({ orderId: 1 });
+// Index for better performance and uniqueness
+conversationSchema.index({ orderId: 1 }, { unique: true });
 conversationSchema.index({ customerId: 1 });
 conversationSchema.index({ status: 1 });
 messageSchema.index({ conversationId: 1, createdAt: 1 });

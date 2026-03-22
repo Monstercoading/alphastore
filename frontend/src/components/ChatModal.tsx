@@ -90,32 +90,44 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     try {
       let date: Date;
       
+      // Handle different date formats
       if (dateString instanceof Date) {
         date = dateString;
       } else if (typeof dateString === 'string') {
-        date = new Date(dateString);
-        
-        if (isNaN(date.getTime())) {
-          const dateMatch = dateString.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-          if (dateMatch) {
-            date = new Date(dateMatch[0]);
-          }
+        // Check if it's a valid date string
+        if (dateString === 'Invalid Date' || !dateString.trim()) {
+          return 'الآن';
         }
+        date = new Date(dateString);
       } else {
-        date = new Date();
+        date = new Date(dateString);
       }
       
+      // Check if date is valid
       if (isNaN(date.getTime())) {
-        console.warn('Invalid date detected:', dateString);
+        console.log('Invalid date detected:', dateString);
         return 'الآن';
       }
       
-      return date.toLocaleTimeString('ar-SA', {
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'الآن';
+      if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+      if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+      if (diffDays < 7) return `منذ ${diffDays} يوم`;
+      
+      return date.toLocaleDateString('ar-SA', {
+        day: 'numeric',
+        month: 'short',
         hour: '2-digit',
         minute: '2-digit'
       });
     } catch (error) {
-      console.error('Error formatting date:', error, 'Date string:', dateString);
+      console.error('Error formatting date:', error, 'Input:', dateString);
       return 'الآن';
     }
   };

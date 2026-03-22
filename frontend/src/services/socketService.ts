@@ -2,8 +2,10 @@ import { io, Socket } from 'socket.io-client';
 
 class SocketService {
   private socket: Socket | null = null;
-  private readonly serverUrl = process.env.REACT_APP_API_URL 
-    ? process.env.REACT_APP_API_URL.replace('/api', '') 
+  
+  // 🔧 FIXED: Use environment variable with fallback
+  private readonly serverUrl = process.env.REACT_APP_SOCKET_URL 
+    ? process.env.REACT_APP_SOCKET_URL.replace('/api', '') 
     : 'https://alphastore-6rvv.onrender.com';
 
   connect() {
@@ -14,6 +16,8 @@ class SocketService {
       const connectUrl = window.location.origin.includes('vercel.app') 
         ? this.serverUrl 
         : 'http://localhost:5000';
+        
+      console.log('🔗 Using socket URL:', connectUrl);
         
       this.socket = io(connectUrl, {
         path: '/socket.io/',

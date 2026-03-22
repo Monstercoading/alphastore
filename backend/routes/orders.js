@@ -7,37 +7,42 @@ const auth = require('../middleware/auth');
 // Create order
 router.post('/', auth, async (req, res) => {
   try {
-    const { games } = req.body;
+    const { items } = req.body;
+    
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ message: 'Items array is required' });
+    }
     
     let totalAmount = 0;
-    const orderGames = [];
+    const orderItems = [];
 
-    for (let gameItem of games) {
-      const game = await Game.findById(gameItem.gameId);
+    for (let item of items) {
+      const game = await Game.findById(item.gameId);
       if (!game || game.availability !== 'available') {
-        return res.status(400).json({ message: `Game ${game.title} is not available` });
+        return res.status(400).json({ message: `Game ${game?.title || 'Unknown'} is not available` });
       }
       
       totalAmount += game.price;
-      orderGames.push({
+      orderItems.push({
         game: game._id,
+        gameName: game.title,
         price: game.price
       });
     }
 
     const newOrder = new Order({
       user: req.user.id,
-      games: orderGames,
+      items: orderItems,
       totalAmount
     });
 
     // Update game availability to sold
-    for (let gameItem of orderGames) {
-      await Game.findByIdAndUpdate(gameItem.game, { availability: 'sold' });
+    for (let item of orderItems) {
+      await Game.findByIdAndUpdate(item.game, { availability: 'sold' });
     }
 
     const order = await newOrder.save();
-    await order.populate('games.game');
+    await order.populate('items.game');
     
     res.json(order);
   } catch (err) {

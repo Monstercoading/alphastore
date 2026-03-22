@@ -11,10 +11,14 @@ const OrderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  games: [{
+  items: [{
     game: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Game',
+      required: true
+    },
+    gameName: {
+      type: String,
       required: true
     },
     price: {
@@ -28,7 +32,7 @@ const OrderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled'],
+    enum: ['pending', 'sent', 'completed', 'cancelled'],
     default: 'pending'
   },
   createdAt: {

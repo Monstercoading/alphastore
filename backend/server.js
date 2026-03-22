@@ -12,9 +12,38 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// 🔧 FIXED CORS Configuration - Use specific origins instead of wildcard
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : [
+      'http://localhost:3000',
+      'https://alphastore-vert.vercel.app',
+      'https://alphastore-6rvv.onrender.com'
+    ];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
+};
+
+app.use(cors(corsOptions));
+
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allow all origins for testing
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
   },

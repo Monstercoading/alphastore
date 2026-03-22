@@ -1,12 +1,18 @@
 import axios from 'axios';
 
+// 🔧 FIXED: Use environment variables with fallbacks
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'https://alphastore-6rvv.onrender.com';
+
+console.log('🔗 API Base URL:', API_BASE_URL);
+console.log('🔗 Socket URL:', SOCKET_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // Add timeout for better error handling
 });
 
 // Add token to requests if available

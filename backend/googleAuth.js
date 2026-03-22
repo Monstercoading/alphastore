@@ -1,6 +1,7 @@
 const express = require('express');
 const { google } = require('googleapis');
 const { formatGoogleUser } = require('./nameUtils');
+const User = require('./models/User');
 
 const router = express.Router();
 
@@ -66,14 +67,63 @@ router.post('/google', async (req, res) => {
     const googleUser = formatGoogleUser(data);
     console.log('✅ User formatted:', googleUser.email);
 
+    // 🔧 FIX: Check if user already exists before creating new one
+    console.log('🔍 Checking if user already exists...');
+    let existingUser;
+    try {
+      existingUser = await User.findOne({ email: data.email });
+      console.log('👤 User exists check result:', existingUser ? 'Found existing user' : 'New user');
+    } catch (dbError) {
+      console.error('❌ Database error checking user:', dbError);
+      // Continue with user creation if DB check fails
+    }
+
+    let finalUser;
+    if (existingUser) {
+      console.log('✅ Using existing user:', existingUser.email);
+      finalUser = {
+        _id: existingUser._id,
+        id: existingUser._id,
+        email: existingUser.email,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        role: existingUser.role
+      };
+    } else {
+      console.log('👤 Creating new user for:', data.email);
+      try {
+        const newUser = new User({
+          email: data.email,
+          firstName: data.given_name || 'User',
+          lastName: data.family_name || 'Name',
+          // No password for Google OAuth users
+        });
+        
+        await newUser.save();
+        console.log('✅ New user saved:', newUser.email);
+        
+        finalUser = {
+          _id: newUser._id,
+          id: newUser._id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role
+        };
+      } catch (saveError) {
+        console.error('❌ Error saving new user:', saveError);
+        throw new Error(`Failed to create user: ${saveError.message}`);
+      }
+    }
+
     // إنشاء JWT token
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
     const token = jwt.sign(
       { 
-        userId: googleUser._id,
-        email: googleUser.email,
-        role: googleUser.role 
+        userId: finalUser._id,
+        email: finalUser.email,
+        role: finalUser.role 
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -82,9 +132,9 @@ router.post('/google', async (req, res) => {
     
     res.json({
       success: true,
-      user: googleUser,
+      user: finalUser,
       token: token,
-      message: 'Google authentication successful'
+      message: existingUser ? 'Google authentication successful (existing user)' : 'Google authentication successful (new user created)'
     });
 
   } catch (error) {
