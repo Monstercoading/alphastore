@@ -474,7 +474,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       }
     };
 
-    // Set up listeners
+    // Set up listeners - clean existing first
+    socketService.off('newMessage', handleNewMessage);
+    socketService.off('receiveMessage', handleReceiveMessage);
+    socketService.off('userTyping', handleUserTyping);
+    socketService.off('userStopTyping', handleUserStopTyping);
+    
     socketService.onNewMessage(handleNewMessage);
     socketService.on('receiveMessage', handleReceiveMessage);
     socketService.onUserTyping(handleUserTyping);
@@ -702,23 +707,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
                   {messages.map((message, index) => {
-                    const isMyMessage = message.senderId === state.user?._id;
+                    const isMe = message.senderId === state.user?._id;
                     return (
                       <div
                         key={message._id || index}
-                        className={`flex mb-4 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}
+                        className={`flex mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'ml-auto' : 'mr-auto'}`}>
+                        <div className={`max-w-xs lg:max-w-md ${isMe ? 'order-1' : ''}`}>
                           <div
                             className={`px-4 py-3 rounded-2xl ${
-                              isMyMessage
-                                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
+                              isMe
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-sm'
                                 : 'bg-gray-600 text-white rounded-bl-sm'
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-medium opacity-75">
-                                {isMyMessage 
+                                {isMe 
                                   ? (state.user?.role === 'admin' ? 'أنا - الدعم الفني' : 'أنا')
                                   : (message.senderType === 'admin' ? 'الدعم الفني' : 'العميل')
                                 }
