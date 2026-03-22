@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Auth</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Authentication System</h1>
+    
+    <div id="status"></div>
+    
+    <h2>🔧 Quick Actions</h2>
+    <button onclick="checkAuth()" class="btn-primary">Check Authentication</button>
+    <button onclick="createMockUser()" class="btn-success">Create Mock User</button>
+    <button onclick="clearAuth()" class="btn-danger">Clear Authentication</button>
+    
+    <h2>📊 Current Status</h2>
+    <div id="details"></div>
+
+    <script>
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            const users = localStorage.getItem('users');
+            
+            let statusHTML = '';
+            
+            if (token && user) {
+                statusHTML = '<div class="status success">✅ Authentication data exists</div>';
+            } else {
+                statusHTML = '<div class="status error">❌ No authentication data found</div>';
+            }
+            
+            const detailsHTML = `
+                <h3>Token:</h3>
+                <pre>${token || 'No token found'}</pre>
+                
+                <h3>User:</h3>
+                <pre>${user || 'No user found'}</pre>
+                
+                <h3>Available Users:</h3>
+                <pre>${users || 'No users found'}</pre>
+                
+                <h3>Token Analysis:</h3>
+                <pre>${token ? analyzeToken(token) : 'No token to analyze'}</pre>
+            `;
+            
+            document.getElementById('status').innerHTML = statusHTML;
+            document.getElementById('details').innerHTML = detailsHTML;
+        }
+        
+        function analyzeToken(token) {
+            const analysis = {
+                length: token.length,
+                type: 'unknown',
+                userId: 'none'
+            };
+            
+            if (token.includes('admin-signature')) {
+                analysis.type = 'Admin Token';
+                try {
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1]));
+                        analysis.userId = payload.user._id;
+                        analysis.email = payload.user.email;
+                        analysis.role = payload.user.role;
+                    }
+                } catch (e) {
+                    analysis.error = 'Failed to parse admin token';
+                }
+            } else if (token.includes('mock-jwt-token-')) {
+                analysis.type = 'Mock Token';
+                analysis.userId = token.replace('mock-jwt-token-', '');
+            } else {
+                analysis.type = 'Unknown/Real JWT';
+            }
+            
+            return JSON.stringify(analysis, null, 2);
+        }
+        
+        function createMockUser() {
+            const mockUser = {
+                _id: 'mock-user-' + Date.now(),
+                id: 'mock-user-' + Date.now(),
+                email: 'mock@example.com',
+                firstName: 'Mock',
+                lastName: 'User',
+                role: 'user',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            const token = 'mock-jwt-token-' + mockUser._id;
+            
+            // Save to localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(mockUser));
+            
+            // Add to users array
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            users.push(mockUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            alert('✅ Mock user created successfully!');
+            checkAuth();
+        }
+        
+        function clearAuth() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('users');
+            alert('🗑️ Authentication cleared!');
+            checkAuth();
+        }
+        
+        // Auto-check on load
+        checkAuth();
+    </script>
+</body>
+</html>

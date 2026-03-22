@@ -398,6 +398,37 @@ const ServerStatusDashboard: React.FC = () => {
   const testConversationSystem = async () => {
     console.log('🔍 Starting comprehensive conversation system test...');
     
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Conversation system test timeout')), 15000);
+    });
+    
+    try {
+      await Promise.race([
+        runConversationTests(),
+        timeoutPromise
+      ]);
+    } catch (error: any) {
+      console.error('Conversation system test failed or timed out:', error);
+      
+      // Set all conversation tests to error state
+      setServerStatus(prev => ({
+        ...prev,
+        conversations: {
+          auth: { name: 'Authentication Check', status: 'error', message: 'Test timeout or failed', path: '/auth/verify' },
+          customerConversations: { name: 'Customer Conversations', status: 'error', message: 'Test timeout or failed', path: '/conversations/customer' },
+          adminConversations: { name: 'Admin Conversations', status: 'error', message: 'Test timeout or failed', path: '/conversations/admin' },
+          createConversation: { name: 'Create Conversation', status: 'error', message: 'Test timeout or failed', path: '/conversations' },
+          sendMessage: { name: 'Send Message', status: 'error', message: 'Test timeout or failed', path: '/conversations/:id/messages' },
+          tokenValidation: { name: 'Token Validation', status: 'error', message: 'Test timeout or failed', path: 'N/A' }
+        }
+      }));
+    }
+    
+    console.log('✅ Conversation system test completed');
+  };
+
+  const runConversationTests = async () => {
     // 1. Test Authentication Status
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
@@ -440,9 +471,13 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 2. Test Token Validation
+    // 2. Test Token Validation (with timeout)
     try {
-      const response = await api.get('/auth/verify');
+      const response = await Promise.race([
+        api.get('/auth/verify'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Token validation timeout')), 5000))
+      ]);
+      
       setServerStatus(prev => ({
         ...prev,
         conversations: {
@@ -483,9 +518,13 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 3. Test Customer Conversations
+    // 3. Test Customer Conversations (with timeout)
     try {
-      const response = await conversationAPI.getCustomerConversations();
+      const response = await Promise.race([
+        conversationAPI.getCustomerConversations(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Customer conversations timeout')), 5000))
+      ]);
+      
       setServerStatus(prev => ({
         ...prev,
         conversations: {
@@ -526,9 +565,13 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 4. Test Admin Conversations
+    // 4. Test Admin Conversations (with timeout)
     try {
-      const response = await conversationAPI.getAdminConversations();
+      const response = await Promise.race([
+        conversationAPI.getAdminConversations(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Admin conversations timeout')), 5000))
+      ]);
+      
       setServerStatus(prev => ({
         ...prev,
         conversations: {
@@ -569,11 +612,14 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 5. Test Create Conversation
+    // 5. Test Create Conversation (with timeout)
     try {
-      // Use a mock order ID for testing
       const mockOrderId = 'test-order-' + Date.now();
-      const response = await conversationAPI.createConversation(mockOrderId);
+      const response = await Promise.race([
+        conversationAPI.createConversation(mockOrderId),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Create conversation timeout')), 5000))
+      ]);
+      
       setServerStatus(prev => ({
         ...prev,
         conversations: {
@@ -615,16 +661,19 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 6. Test Send Message (will likely fail without a real conversation)
+    // 6. Test Send Message (with timeout)
     try {
-      // Try to send a test message - this will likely fail but we can see the error
       const testConversationId = 'test-conversation-' + Date.now();
       const testMessage = {
         content: 'Test message from system check',
         senderType: 'customer'
       };
       
-      const response = await api.post(`/conversations/${testConversationId}/messages`, testMessage);
+      const response = await Promise.race([
+        api.post(`/conversations/${testConversationId}/messages`, testMessage),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Send message timeout')), 5000))
+      ]);
+      
       setServerStatus(prev => ({
         ...prev,
         conversations: {
@@ -665,8 +714,6 @@ const ServerStatusDashboard: React.FC = () => {
         }
       }));
     }
-
-    console.log('✅ Conversation system test completed');
   };
 
   const testFrontend = async (): Promise<void> => {
