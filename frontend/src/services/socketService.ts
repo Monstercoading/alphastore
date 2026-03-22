@@ -153,4 +153,5 @@ class SocketService {
   }
 }
 
+export { SocketService };
 export default new SocketService();
