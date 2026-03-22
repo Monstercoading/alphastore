@@ -37,9 +37,11 @@ module.exports = async function(req, res, next) {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
           console.log(' Token payload:', JSON.stringify(payload, null, 2));
           
-          // Check if token is expired
-          if (payload.exp && Date.now() > payload.exp) {
+          // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
+          if (payload.exp && Date.now() > (payload.exp * 1000)) {
             console.log(' Admin token expired');
+            console.log(' Current time:', new Date(Date.now()).toISOString());
+            console.log(' Token expires:', new Date(payload.exp * 1000).toISOString());
             return res.status(401).json({ message: 'Token expired, please login again' });
           }
           
