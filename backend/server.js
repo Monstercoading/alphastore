@@ -692,6 +692,23 @@ app.use('/api/users', usersRouter);
 const gamesRouter = require('./routes/games');
 app.use('/api/games', gamesRouter);
 
+// ========== NOTIFICATIONS API ==========
+app.get('/api/notifications', auth, async (req, res) => {
+  console.log('🔍 Fetching notifications for user:', req.user.email);
+  
+  try {
+    // For now, return empty notifications array
+    // In a real app, this would fetch from database
+    const notifications = [];
+    
+    console.log('✅ Notifications fetched successfully:', notifications.length);
+    res.json(notifications);
+  } catch (error) {
+    console.error('❌ Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
 // ========== ADMIN NOTIFICATIONS SSE ==========
 
 // SSE endpoint for real-time admin notifications
