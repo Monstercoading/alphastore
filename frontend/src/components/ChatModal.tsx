@@ -342,6 +342,15 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       fetchConversations();
+      
+      // Check for new conversation ID from localStorage
+      const newConversationId = localStorage.getItem('newConversationId');
+      if (newConversationId) {
+        console.log('Found new conversation ID:', newConversationId);
+        setSelectedConversation(newConversationId);
+        fetchMessages(newConversationId);
+        localStorage.removeItem('newConversationId'); // Clean up
+      }
     }
   }, [isOpen]);
 
