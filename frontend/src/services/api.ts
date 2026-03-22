@@ -27,10 +27,11 @@ api.interceptors.response.use(
       console.log('Current token:', localStorage.getItem('token'));
       console.log('Current user:', localStorage.getItem('user'));
       
-      // Re-enable auto-logout
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Don't auto-logout immediately, let the component handle it
+      // This prevents redirect loops and allows better error handling
+      // localStorage.removeItem('token');
+      // localStorage.removeItem('user');
+      // window.location.href = '/login';
     }
     return Promise.reject(error);
   }

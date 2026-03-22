@@ -153,7 +153,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
         showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
       } else if (error.response?.status === 401) {
-        showErrorToast('يجب تسجيل الدخول للوصول إلى المحادثات');
+        console.log('401 error - token might be expired');
+        showErrorToast('انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى.');
+        // Clear auth state and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
       } else if (error.response?.status === 404) {
         showErrorToast('خدمة الدعم الفني غير متاحة حالياً');
       } else {
