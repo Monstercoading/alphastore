@@ -265,37 +265,29 @@ const AdminDashboard: React.FC = () => {
 
   // Load conversations for admin users
   useEffect(() => {
-    if (state.isAuthenticated && state.user?.role === 'admin') {
-      console.log('Loading conversations for admin...');
+    if (state.isAuthenticated) {
+      console.log('Admin authenticated, starting conversation polling');
       loadConversations();
       
       // Connect to Socket.io for real-time updates
       socketService.connect();
       
       // Listen for new conversation messages
-      socketService.onNewConversationMessage((data) => {
+      const handleNewConversationMessage = (data: any) => {
         console.log('New conversation message received:', data);
         loadConversations(); // Refresh conversations
         playMessageSound();
-      });
+      };
+      socketService.onNewConversationMessage(handleNewConversationMessage);
 
       // Also listen for newMessage events
-      socketService.on('newMessage', (data) => {
+      const handleNewMessage = (data: any) => {
         console.log('New message received:', data);
-        if (data.senderType === 'customer') {
-          loadConversations(); // Refresh conversations
-          playMessageSound();
-        }
-      });
+        loadConversations(); // Refresh conversations
+        playMessageSound();
+      };
+      socketService.on('newMessage', handleNewMessage);
 
-      // Listen for receiveMessage events
-      socketService.on('receiveMessage', (data) => {
-        console.log('Message received:', data);
-        if (data.senderType === 'customer') {
-          loadConversations(); // Refresh conversations
-          playMessageSound();
-        }
-      });
       
       // Set up polling for new conversations every 10 seconds (backup)
       const pollInterval = setInterval(() => {
