@@ -30,19 +30,29 @@ module.exports = async function(req, res, next) {
   try {
     // Special handling for admin signature token
     if (token.includes('admin-signature')) {
+      console.log('🔧 Detected admin token in middleware');
       const parts = token.split('.');
       if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-        
-        // Check if token is expired
-        if (payload.exp && Date.now() > payload.exp) {
-          return res.status(401).json({ message: 'Token expired, please login again' });
+        try {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+          
+          // Check if token is expired
+          if (payload.exp && Date.now() > payload.exp) {
+            console.log('❌ Admin token expired');
+            return res.status(401).json({ message: 'Token expired, please login again' });
+          }
+          
+          console.log('✅ Admin token verified successfully for user:', payload.user.email);
+          req.user = payload.user;
+          next();
+          return;
+        } catch (parseError) {
+          console.log('❌ Failed to parse admin token:', parseError.message);
+          return res.status(401).json({ message: 'Invalid admin token format' });
         }
-        
-        console.log('Admin token verified successfully for user:', payload.user.email);
-        req.user = payload.user;
-        next();
-        return;
+      } else {
+        console.log('❌ Invalid admin token structure');
+        return res.status(401).json({ message: 'Invalid admin token structure' });
       }
     }
     
