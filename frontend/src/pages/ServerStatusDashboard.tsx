@@ -398,31 +398,32 @@ const ServerStatusDashboard: React.FC = () => {
   const testConversationSystem = async () => {
     console.log('🔍 Starting comprehensive conversation system test...');
     
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Conversation system test timeout')), 15000);
-    });
-    
     try {
-      await Promise.race([
-        runConversationTests(),
-        timeoutPromise
-      ]);
+      // Use the same function as initial load - no timeout, direct execution
+      await runConversationTests();
     } catch (error: any) {
-      console.error('Conversation system test failed or timed out:', error);
+      console.error('Conversation system test failed:', error);
       
-      // Set all conversation tests to error state
-      setServerStatus(prev => ({
-        ...prev,
-        conversations: {
-          auth: { name: 'Authentication Check', status: 'error', message: 'Test timeout or failed', path: '/auth/verify' },
-          customerConversations: { name: 'Customer Conversations', status: 'error', message: 'Test timeout or failed', path: '/conversations/customer' },
-          adminConversations: { name: 'Admin Conversations', status: 'error', message: 'Test timeout or failed', path: '/conversations/admin' },
-          createConversation: { name: 'Create Conversation', status: 'error', message: 'Test timeout or failed', path: '/conversations' },
-          sendMessage: { name: 'Send Message', status: 'error', message: 'Test timeout or failed', path: '/conversations/:id/messages' },
-          tokenValidation: { name: 'Token Validation', status: 'error', message: 'Test timeout or failed', path: 'N/A' }
-        }
-      }));
+      // Only set failed tests, don't overwrite successful ones
+      setServerStatus(prev => {
+        const updatedConversations = { ...prev.conversations };
+        
+        // Only update tests that are still pending (failed)
+        Object.keys(updatedConversations).forEach(key => {
+          if (updatedConversations[key as keyof typeof updatedConversations].status === 'pending') {
+            updatedConversations[key as keyof typeof updatedConversations] = {
+              ...updatedConversations[key as keyof typeof updatedConversations],
+              status: 'error',
+              message: 'Test failed: ' + error.message
+            };
+          }
+        });
+        
+        return {
+          ...prev,
+          conversations: updatedConversations
+        };
+      });
     }
     
     console.log('✅ Conversation system test completed');
