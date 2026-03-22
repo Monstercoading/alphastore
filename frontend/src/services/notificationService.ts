@@ -32,7 +32,7 @@ class NotificationService {
   // Get all notifications for current user
   async getNotifications(): Promise<Notification[]> {
     try {
-      const response = await fetch('/api/notifications', {
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
