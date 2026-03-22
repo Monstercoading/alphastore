@@ -144,13 +144,6 @@ class SocketService {
   emitStopTyping(conversationId: string, user: any) {
     this.socket?.emit('stopTyping', { conversationId, user });
   }
-
-  disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-  }
 }
 
 export { SocketService };
