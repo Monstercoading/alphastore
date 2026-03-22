@@ -122,14 +122,19 @@ class SocketService {
   // Generic event listener for custom events
   on(event: string, callback: (data: any) => void) {
     console.log('👂 Setting up listener for event:', event);
-    if (this.socket) {
-      this.socket.on(event, (data) => {
-        console.log(`📨 Received event: ${event}`, data);
-        callback(data);
-      });
-    } else {
-      console.error('❌ Cannot set up listener - socket not connected');
-    }
+    this.socket?.on(event, callback);
+  }
+
+  // Generic event emitter
+  emit(event: string, data: any) {
+    console.log('📤 Emitting event:', event, data);
+    this.socket?.emit(event, data);
+  }
+
+  // Remove event listener
+  off(event: string, callback: (data: any) => void) {
+    console.log('🔇 Removing listener for event:', event);
+    this.socket?.off(event, callback);
   }
 
   emitTyping(conversationId: string, user: any) {
@@ -140,14 +145,12 @@ class SocketService {
     this.socket?.emit('stopTyping', { conversationId, user });
   }
 
-  off(event: string, callback?: (data: any) => void) {
-    if (callback) {
-      this.socket?.off(event, callback);
-    } else {
-      this.socket?.off(event);
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
   }
 }
 
-export const socketService = new SocketService();
-export { SocketService };
+export default new SocketService();

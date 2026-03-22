@@ -228,41 +228,29 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     const messageContent = newMessage.trim();
-    const tempId = Date.now().toString();
     setNewMessage('');
     setSending(true);
     
-    setMessageStatuses(prev => ({ ...prev, [tempId]: 'sending' }));
-
+    // Don't add message manually - let socket handle it to prevent duplication
     try {
       const message = await conversationAPI.sendMessage(selectedConversation, messageContent);
       
-      setMessageStatuses(prev => ({ ...prev, [tempId]: 'sent', [message._id]: 'delivered' }));
-      
+      // Send via socket - this will trigger receiveMessage event
       socketService.sendMessage({
         conversationId: selectedConversation,
         message,
         senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
-        senderId: state.user?.id || 'guest'
+        senderId: state.user?._id || 'guest'
       });
       
       // Auto-refresh sidebar when new message is sent
       fetchConversations();
-      
-      setTimeout(() => {
-        setMessageStatuses(prev => ({ ...prev, [message._id]: 'delivered' }));
-      }, 500);
       
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       showErrorToast('فشل إرسال الرسالة');
       setNewMessage(messageContent);
-      setMessageStatuses(prev => {
-        const newStatuses = { ...prev };
-        delete newStatuses[tempId];
-        return newStatuses;
-      });
     } finally {
       setSending(false);
     }
@@ -357,49 +345,105 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const filteredConversations = conversations.filter(conv => conv.status === activeTab);
 
   useEffect(() => {
-    socketService.onNewMessage((data: any) => {
+    // Persistent socket listeners - never disconnect
+    const handleNewMessage = (data: any) => {
+      console.log('📨 New message received:', data);
       if (data.conversationId === selectedConversation) {
-        setMessages(prev => [...prev, data.message]);
+        setMessages(prev => [...prev, data.message || data]);
         scrollToBottom();
       }
-      fetchConversations();
-    });
+      
+      // Move conversation to top and update last message
+      setConversations(prev => {
+        const updated = prev.map(conv => {
+          if (conv._id === data.conversationId) {
+            return {
+              ...conv,
+              lastMessage: data.message?.content || data.content || 'New message',
+              lastMessageTime: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return conv;
+        });
+        
+        // Move updated conversation to top
+        return updated.sort((a, b) => {
+          if (a._id === data.conversationId) return -1;
+          if (b._id === data.conversationId) return 1;
+          return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
+        });
+      });
+    };
 
-    // Add real-time message listener for instant updates
-    socketService.on('receiveMessage', (data: any) => {
-      console.log('📨 Received real-time message:', data);
+    const handleReceiveMessage = (data: any) => {
+      console.log('📨 Real-time message received:', data);
       if (data.conversationId === selectedConversation) {
         setMessages(prev => [...prev, data]);
         scrollToBottom();
       }
-      fetchConversations();
-    });
+      
+      // Move conversation to top and update last message
+      setConversations(prev => {
+        const updated = prev.map(conv => {
+          if (conv._id === data.conversationId) {
+            return {
+              ...conv,
+              lastMessage: data.content || 'New message',
+              lastMessageTime: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return conv;
+        });
+        
+        // Move updated conversation to top
+        return updated.sort((a, b) => {
+          if (a._id === data.conversationId) return -1;
+          if (b._id === data.conversationId) return 1;
+          return new Date(b.lastMessageTime || b.updatedAt).getTime() - new Date(a.lastMessageTime || a.updatedAt).getTime();
+        });
+      });
+    };
 
-    socketService.onUserTyping((data: any) => {
+    const handleUserTyping = (data: any) => {
       if (data.conversationId === selectedConversation) {
         setIsTyping(true);
         setTypingUser(data.userName);
       }
-    });
+    };
 
-    socketService.onUserStopTyping((data: any) => {
+    const handleUserStopTyping = (data: any) => {
       if (data.conversationId === selectedConversation) {
         setIsTyping(false);
-        setTypingUser(null);
+        setTypingUser('');
       }
-    });
+    };
 
+    // Set up listeners
+    socketService.onNewMessage(handleNewMessage);
+    socketService.on('receiveMessage', handleReceiveMessage);
+    socketService.onUserTyping(handleUserTyping);
+    socketService.onUserStopTyping(handleUserStopTyping);
+
+    // Cleanup function
     return () => {
-      socketService.off('newMessage');
-      socketService.off('userTyping');
-      socketService.off('userStopTyping');
+      // Don't disconnect - just remove listeners
+      socketService.off('newMessage', handleNewMessage);
+      socketService.off('receiveMessage', handleReceiveMessage);
+      socketService.off('userTyping', handleUserTyping);
+      socketService.off('userStopTyping', handleUserStopTyping);
     };
   }, [selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
+      // Join room immediately when opening chat
+      socketService.emit('joinRoom', selectedConversation);
       socketService.joinConversation(selectedConversation);
+      
       return () => {
+        socketService.emit('leaveRoom', selectedConversation);
         socketService.leaveConversation(selectedConversation);
       };
     }
@@ -604,23 +648,26 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-[#0a0a0a] to-[#1a1d24]">
                   {messages.map((message, index) => {
-                    const isMyMessage = message.senderId === state.user?.id;
+                    const isMyMessage = message.senderId === state.user?._id;
                     return (
                       <div
                         key={message._id || index}
-                        className={`flex mb-4 ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                        className={`flex mb-4 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}
                       >
-                        <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'order-1' : ''}`}>
+                        <div className={`max-w-xs lg:max-w-md ${isMyMessage ? 'ml-auto' : 'mr-auto'}`}>
                           <div
                             className={`px-4 py-3 rounded-2xl ${
                               isMyMessage
-                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-sm'
-                                : 'bg-gray-200 text-gray-800 rounded-bl-sm'
+                                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white rounded-br-sm'
+                                : 'bg-gray-600 text-white rounded-bl-sm'
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-medium opacity-75">
-                                {message.senderType === 'admin' ? 'أدمن' : 'عميل'}
+                                {isMyMessage 
+                                  ? (state.user?.role === 'admin' ? 'أنا - الدعم الفني' : 'أنا')
+                                  : (message.senderType === 'admin' ? 'الدعم الفني' : 'العميل')
+                                }
                               </span>
                             </div>
                             {message.imageUrl ? (
