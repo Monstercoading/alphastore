@@ -165,12 +165,20 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
         showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
       } else if (error.response?.status === 401) {
-        console.log('401 error - token might be expired');
-        showErrorToast('انتهت جلسة العمل. يرجى تسجيل الدخول مرة أخرى.');
-        // Clear auth state and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // 🔧 FIXED: Don't auto-logout, check if it's a real auth issue or backend issue
+        console.log('401 error - checking if backend is working...');
+        
+        // Check if this is a backend connectivity issue
+        if (error.message?.includes('Network Error') || error.code === 'ECONNREFUSED') {
+          showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+        } else {
+          // Only show auth error, don't auto-logout
+          showErrorToast('مشكلة في المصادقة. يرجى المحاولة مرة أخرى.');
+          // Don't auto-logout - let the user continue
+          // localStorage.removeItem('token');
+          // localStorage.removeItem('user');
+          // window.location.href = '/login';
+        }
       } else if (error.response?.status === 404) {
         showErrorToast('خدمة الدعم الفني غير متاحة حالياً');
       } else {
@@ -185,17 +193,18 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     try {
       const response = await conversationAPI.getMessages(conversationId);
       setMessages(response);
-      
-      if (state.user?.role === 'admin') {
-        await conversationAPI.markAsRead(conversationId);
-        markConversationAsRead(conversationId);
-      }
-      
-      scrollToBottom();
     } catch (error: any) {
       console.error('Error fetching messages:', error);
+      // Check if it's a network error
       if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
         showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else if (error.response?.status === 401) {
+        // 🔧 FIXED: Don't auto-logout
+        console.log('401 error in fetchMessages - backend might be down');
+        showErrorToast('مشكلة في تحميل الرسائل. يرجى المحاولة مرة أخرى.');
+        // Don't auto-logout
+      } else if (error.response?.status === 404) {
+        showErrorToast('المحادثة غير موجودة');
       } else {
         showErrorToast('فشل في تحميل الرسائل');
       }
@@ -271,27 +280,22 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
       await conversationAPI.closeConversation(conversationId);
       showSuccessToast('تم إغلاق المحادثة');
       
-      const conversation = conversations.find(c => c._id === conversationId);
-      if (conversation && state.user?.role !== 'admin') {
-        setTimeout(async () => {
-          try {
-            await conversationAPI.createConversation(conversation.orderId._id);
-            fetchConversations();
-          } catch (error) {
-            console.error('Error creating new conversation:', error);
-          }
-        }, 2000);
-      }
+      // Refresh conversations list
+      await fetchConversations();
       
-      fetchConversations();
-      if (selectedConversation === conversationId) {
-        setSelectedConversation(null);
-        setMessages([]);
-      }
+      // Clear selected conversation
+      setSelectedConversation(null);
+      setMessages([]);
     } catch (error: any) {
       console.error('Error closing conversation:', error);
+      // Check if it's a network error
       if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
         showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else if (error.response?.status === 401) {
+        // 🔧 FIXED: Don't auto-logout
+        console.log('401 error in closeConversation - backend might be down');
+        showErrorToast('مشكلة في إغلاق المحادثة. يرجى المحاولة مرة أخرى.');
+        // Don't auto-logout
       } else if (error.response?.status === 404) {
         showErrorToast('المحادثة غير موجودة');
       } else {
@@ -377,23 +381,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      // Debug authentication state
-      console.log('Auth state:', {
-        isAuthenticated: state.isAuthenticated,
-        token: state.token ? 'exists' : 'missing',
-        user: state.user ? 'exists' : 'missing',
-        userId: state.user?.id
-      });
-      
-      // Check if user is authenticated
-      if (!state.isAuthenticated || !state.token) {
-        console.log('Authentication failed - showing error and closing modal');
-        showErrorToast('يجب تسجيل الدخول للوصول إلى المحادثات');
-        onClose();
-        return;
-      }
-      
-      console.log('Authentication passed - fetching conversations');
+      // 🔧 FIXED: Don't auto-logout on modal open, just try to fetch conversations
+      console.log('ChatModal opened - attempting to fetch conversations');
       fetchConversations();
       
       // Check for new conversation ID from localStorage

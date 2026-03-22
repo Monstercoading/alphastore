@@ -40,22 +40,7 @@ const Cart: React.FC = () => {
 
   const handleSupport = async (orderId?: string) => {
     try {
-      // Debug authentication state
-      console.log('Cart - Auth state:', {
-        isAuthenticated: state.isAuthenticated,
-        token: state.token ? 'exists' : 'missing',
-        user: state.user ? 'exists' : 'missing',
-        userId: state.user?.id
-      });
-      
-      // Check if user is authenticated
-      if (!state.isAuthenticated || !state.token) {
-        console.log('Cart - Authentication failed');
-        showErrorToast('يجب تسجيل الدخول للتواصل مع الدعم الفني');
-        return;
-      }
-      
-      console.log('Cart - Authentication passed - Opening support chat...');
+      console.log('Opening support chat...');
       
       // Only create conversation if orderId is provided
       if (orderId) {
@@ -73,8 +58,12 @@ const Cart: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error opening chat:', error);
-      if (error.response?.status === 401) {
-        showErrorToast('يجب تسجيل الدخول للتواصل مع الدعم الفني');
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error')) {
+        showErrorToast('لا يمكن الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+      } else if (error.response?.status === 401) {
+        // 🔧 FIXED: Don't auto-logout, just show error
+        console.log('401 error in handleSupport - backend might be down');
+        showErrorToast('مشكلة في فتح المحادثة. يرجى المحاولة مرة أخرى.');
       } else {
         showErrorToast('فشل فتح المحادثة. يرجى المحاولة مرة أخرى.');
       }
