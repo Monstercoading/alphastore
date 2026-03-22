@@ -130,9 +130,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
+      console.log('Fetching conversations for role:', state.user?.role);
       const response = state.user?.role === 'admin' 
         ? await conversationAPI.getAdminConversations()
         : await conversationAPI.getCustomerConversations();
+      console.log('Conversations response:', response);
       setConversations(response);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -398,7 +400,15 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
                 <div className="p-4 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
                     <MessageCircle className="w-12 h-12 text-gray-600" />
-                    {activeTab === 'open' ? 'لا توجد محادثات مفتوحة' : 'لا توجد محادثات مغلقة'}
+                    <p className="text-sm">
+                      {activeTab === 'open' ? 'لا توجد محادثات مفتوحة' : 'لا توجد محادثات مغلقة'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {state.user?.role === 'admin' 
+                        ? 'سيظهر هنا العملاء الذين يبدأون محادثات جديدة' 
+                        : 'ابدأ محادثة جديدة من خلال صفحة المنتجات'
+                      }
+                    </p>
                   </div>
                 </div>
               ) : (
