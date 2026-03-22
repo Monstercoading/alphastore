@@ -45,10 +45,9 @@ const Conversation: React.FC = () => {
       // Connect to Socket.io
       socketService.connect();
       socketService.joinConversation(id);
-      
+
       // Listen for new messages
-      socketService.onNewMessage((data) => {
-        console.log('New message received:', data);
+      const handleNewMessage = (data: any) => {
         if (data.conversationId === id) {
           setMessages(prev => {
             // Check if message already exists
@@ -60,10 +59,11 @@ const Conversation: React.FC = () => {
           });
           scrollToBottom();
         }
-      });
+      };
+      socketService.onNewMessage(handleNewMessage);
 
       // Listen for receiveMessage event (backend emits this)
-      socketService.on('receiveMessage', (data) => {
+      const handleReceiveMessage = (data: any) => {
         console.log('Receive message event:', data);
         if (data.conversationId === id) {
           setMessages(prev => {
@@ -76,39 +76,47 @@ const Conversation: React.FC = () => {
           });
           scrollToBottom();
         }
-      });
+      };
+      socketService.on('receiveMessage', handleReceiveMessage);
 
       // Listen for typing indicators
-      socketService.onUserTyping((data) => {
+      const handleUserTyping = (data: any) => {
         if (data.conversationId === id) {
           setTypingUser(data.user?.firstName || 'شخص ما');
         }
-      });
+      };
+      socketService.onUserTyping(handleUserTyping);
 
-      socketService.onUserStopTyping(() => {
+      const handleUserStopTyping = () => {
         setTypingUser(null);
-      });
+      };
+      socketService.onUserStopTyping(handleUserStopTyping);
 
       // Listen for conversation closed
-      socketService.on('conversationClosed', (data) => {
+      const handleConversationClosed = (data: any) => {
         if (data.conversationId === id) {
           showSuccessToast('تم إغلاق المحادثة');
           navigate(state.user?.role === 'admin' ? '/admin' : '/cart');
         }
-      });
+      };
+      socketService.on('conversationClosed', handleConversationClosed);
 
       // Listen for messages read
-      socketService.on('messagesRead', (data) => {
+      const handleMessagesRead = (data: any) => {
         if (data.conversationId === id) {
           setMessages(prev => prev.map(msg => ({ ...msg, isRead: true, read: true })));
         }
-      });
+      };
+      socketService.on('messagesRead', handleMessagesRead);
 
       return () => {
         socketService.leaveConversation(id);
-        socketService.off('newMessage');
-        socketService.off('userTyping');
-        socketService.off('userStopTyping');
+        socketService.off('newMessage', handleNewMessage);
+        socketService.off('receiveMessage', handleReceiveMessage);
+        socketService.off('userTyping', handleUserTyping);
+        socketService.off('userStopTyping', handleUserStopTyping);
+        socketService.off('conversationClosed', handleConversationClosed);
+        socketService.off('messagesRead', handleMessagesRead);
       };
     }
   }, [id]);
