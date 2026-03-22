@@ -429,7 +429,7 @@ const ServerStatusDashboard: React.FC = () => {
   };
 
   const runConversationTests = async () => {
-    console.log('� Starting fast conversation tests...');
+    console.log('🚀 Starting fast conversation tests...');
     
     // 1. Test Authentication Status (no API call - instant)
     console.log('1️⃣ Checking authentication status...');
@@ -438,7 +438,7 @@ const ServerStatusDashboard: React.FC = () => {
     
     if (token && user) {
       const tokenType = token.includes('admin-signature') ? 'Admin' : token.includes('mock-jwt-token') ? 'Mock' : 'Unknown';
-      console.log('✅ Authentication found:', tokenType);
+      console.log('✅ Authentication found:', tokenType, 'length:', token.length);
       
       setServerStatus(prev => ({
         ...prev,
@@ -477,33 +477,47 @@ const ServerStatusDashboard: React.FC = () => {
       return; // Exit early if no auth
     }
 
-    // 2. Test Token Validation (1 second timeout)
+    // 2. Test Token Validation (use same API as other parts of the app)
     console.log('2️⃣ Validating token...');
     try {
+      // Use the same API pattern that works in other parts of the app
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
       
-      const response = await api.get('/auth/verify', { signal: controller.signal });
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api'}/auth/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
       clearTimeout(timeoutId);
       
-      console.log('✅ Token valid');
-      setServerStatus(prev => ({
-        ...prev,
-        conversations: {
-          ...prev.conversations,
-          tokenValidation: {
-            name: 'Token Validation',
-            status: 'success',
-            message: 'Token is valid on server',
-            path: 'N/A',
-            details: { 
-              serverValidation: true,
-              responseStatus: response.status,
-              userData: response.data 
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Token valid:', data);
+        setServerStatus(prev => ({
+          ...prev,
+          conversations: {
+            ...prev.conversations,
+            tokenValidation: {
+              name: 'Token Validation',
+              status: 'success',
+              message: 'Token is valid on server',
+              path: 'N/A',
+              details: { 
+                serverValidation: true,
+                responseStatus: response.status,
+                userData: data 
+              }
             }
           }
-        }
-      }));
+        }));
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error: any) {
       console.log('❌ Token validation failed:', error.message);
       setServerStatus(prev => ({
@@ -528,30 +542,45 @@ const ServerStatusDashboard: React.FC = () => {
       }));
     }
 
-    // 3. Test all conversation APIs in parallel for speed
+    // 3. Test all conversation APIs using the same pattern as the working app
     console.log('3️⃣ Testing conversation APIs...');
     
-    // Run all conversation tests in parallel
+    const API_BASE = process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com/api';
+    
+    // Run all conversation tests in parallel using fetch (same as working parts)
     const [customerResult, adminResult, createResult, sendResult] = await Promise.allSettled([
       // Customer Conversations
       (async () => {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
           
-          const response = await conversationAPI.getCustomerConversations();
+          const response = await fetch(`${API_BASE}/conversations/customer`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            signal: controller.signal
+          });
+          
           clearTimeout(timeoutId);
           
-          return {
-            type: 'customerConversations',
-            status: 'success',
-            message: `Retrieved ${Array.isArray(response) ? response.length : 0} conversations`,
-            details: {
-              conversationsCount: Array.isArray(response) ? response.length : 'N/A',
-              sampleData: Array.isArray(response) ? response.slice(0, 2) : response,
-              isArray: Array.isArray(response)
-            }
-          };
+          if (response.ok) {
+            const data = await response.json();
+            return {
+              type: 'customerConversations',
+              status: 'success',
+              message: `Retrieved ${Array.isArray(data) ? data.length : 0} conversations`,
+              details: {
+                conversationsCount: Array.isArray(data) ? data.length : 'N/A',
+                sampleData: Array.isArray(data) ? data.slice(0, 2) : data,
+                isArray: Array.isArray(data)
+              }
+            };
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
         } catch (error: any) {
           return {
             type: 'customerConversations',
@@ -573,21 +602,34 @@ const ServerStatusDashboard: React.FC = () => {
       (async () => {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
           
-          const response = await conversationAPI.getAdminConversations();
+          const response = await fetch(`${API_BASE}/conversations/admin`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            signal: controller.signal
+          });
+          
           clearTimeout(timeoutId);
           
-          return {
-            type: 'adminConversations',
-            status: 'success',
-            message: `Retrieved ${Array.isArray(response) ? response.length : 0} conversations`,
-            details: {
-              conversationsCount: Array.isArray(response) ? response.length : 'N/A',
-              sampleData: Array.isArray(response) ? response.slice(0, 2) : response,
-              isArray: Array.isArray(response)
-            }
-          };
+          if (response.ok) {
+            const data = await response.json();
+            return {
+              type: 'adminConversations',
+              status: 'success',
+              message: `Retrieved ${Array.isArray(data) ? data.length : 0} conversations`,
+              details: {
+                conversationsCount: Array.isArray(data) ? data.length : 'N/A',
+                sampleData: Array.isArray(data) ? data.slice(0, 2) : data,
+                isArray: Array.isArray(data)
+              }
+            };
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
         } catch (error: any) {
           return {
             type: 'adminConversations',
@@ -610,22 +652,36 @@ const ServerStatusDashboard: React.FC = () => {
         try {
           const mockOrderId = 'test-order-' + Date.now();
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
           
-          const response = await conversationAPI.createConversation(mockOrderId);
+          const response = await fetch(`${API_BASE}/conversations`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ orderId: mockOrderId }),
+            signal: controller.signal
+          });
+          
           clearTimeout(timeoutId);
           
-          return {
-            type: 'createConversation',
-            status: 'success',
-            message: 'Conversation created successfully',
-            details: {
-              conversationId: response._id,
-              orderId: response.orderId,
-              status: response.status,
-              createdAt: response.createdAt
-            }
-          };
+          if (response.ok) {
+            const data = await response.json();
+            return {
+              type: 'createConversation',
+              status: 'success',
+              message: 'Conversation created successfully',
+              details: {
+                conversationId: data._id,
+                orderId: data.orderId,
+                status: data.status,
+                createdAt: data.createdAt
+              }
+            };
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
         } catch (error: any) {
           return {
             type: 'createConversation',
@@ -653,21 +709,35 @@ const ServerStatusDashboard: React.FC = () => {
           };
           
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
           
-          const response = await api.post(`/conversations/${testConversationId}/messages`, testMessage);
+          const response = await fetch(`${API_BASE}/conversations/${testConversationId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(testMessage),
+            signal: controller.signal
+          });
+          
           clearTimeout(timeoutId);
           
-          return {
-            type: 'sendMessage',
-            status: 'success',
-            message: 'Message sent successfully',
-            details: {
-              messageId: response.data._id,
-              conversationId: testConversationId,
-              content: testMessage.content
-            }
-          };
+          if (response.ok) {
+            const data = await response.json();
+            return {
+              type: 'sendMessage',
+              status: 'success',
+              message: 'Message sent successfully',
+              details: {
+                messageId: data._id,
+                conversationId: testConversationId,
+                content: testMessage.content
+              }
+            };
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
         } catch (error: any) {
           return {
             type: 'sendMessage',
