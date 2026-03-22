@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 class SocketService {
   private socket: Socket | null = null;
   
-  // 🔧 FIXED: Use environment variable with fallback
+  // 🔧 FIXED: Use correct backend URL without /api for Socket.io
   private readonly serverUrl = process.env.REACT_APP_SOCKET_URL 
     ? process.env.REACT_APP_SOCKET_URL.replace('/api', '') 
     : 'https://alphastore-6rvv.onrender.com';
@@ -51,6 +51,20 @@ class SocketService {
       console.log('🔄 Socket already connected:', this.socket.id);
     }
     return this.socket;
+  }
+
+  // 🔧 ADDED: Connect with token for authentication
+  connectWithToken(token: string) {
+    console.log('🔌 Connecting Socket.io with token authentication...');
+    this.connect();
+    
+    // Send token for authentication after connection
+    if (this.socket) {
+      this.socket.on('connect', () => {
+        console.log('🔐 Sending token for socket authentication...');
+        this.socket?.emit('authenticate', { token });
+      });
+    }
   }
 
   disconnect() {

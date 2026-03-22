@@ -134,13 +134,20 @@ class UserAPI {
         return null;
       }
 
+      // 🔧 FIXED: Always return localStorage user as fallback
       // In a real app, you would validate the token with the backend
       // For now, we'll just return the user from storage
+      console.log('Returning user from localStorage as fallback');
       return user;
     } catch (error) {
       console.error('Error getting current user:', error);
       return null;
     }
+  }
+
+  // 🔧 ADDED: Expose getCurrentUserFromStorage for AuthContext fallback
+  getCurrentUserFromStoragePublic(): User | null {
+    return this.getCurrentUserFromStorage();
   }
 
   // Refresh current user data (fetch fresh data)

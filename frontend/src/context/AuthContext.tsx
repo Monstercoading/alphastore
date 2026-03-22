@@ -4,6 +4,7 @@ import { showSuccessToast, showErrorToast, showToastWithAction, formatWelcomeMes
 import { useNavigationWithDelay } from '../hooks/useNavigationWithDelay';
 import { userAPI } from '../services/userAPI';
 import { GOOGLE_AUTH_CONFIG, initiateGoogleSignIn } from '../config/googleAuth';
+import { socketService } from '../services/socketService';
 
 interface User {
   _id: string;
@@ -139,16 +140,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               payload: { user, token },
             });
           } else {
-            // Token exists but no user data, clear everything
+            // 🔧 FIXED: Don't auto-logout, try to get user from localStorage
+            console.log('API returned null, trying localStorage fallback...');
+            const localUser = userAPI.getCurrentUserFromStoragePublic();
+            if (localUser) {
+              console.log('Using localStorage user data as fallback');
+              dispatch({
+                type: 'LOGIN_SUCCESS',
+                payload: { user: localUser, token },
+              });
+            } else {
+              // Only logout if no user data anywhere
+              console.log('No user data found, logging out...');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              dispatch({ type: 'LOGOUT' });
+            }
+          }
+        } catch (error) {
+          console.error('Error loading user data from API, using localStorage fallback:', error);
+          // 🔧 FIXED: Don't auto-logout on network errors, use localStorage fallback
+          const localUser = userAPI.getCurrentUserFromStoragePublic();
+          if (localUser) {
+            console.log('Network error - using localStorage user data');
+            dispatch({
+              type: 'LOGIN_SUCCESS',
+              payload: { user: localUser, token },
+            });
+          } else {
+            // Only logout if no user data in localStorage
+            console.log('No user data in localStorage, logging out...');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             dispatch({ type: 'LOGOUT' });
           }
-        } catch (error) {
-          console.error('Error loading user data:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          dispatch({ type: 'LOGOUT' });
         }
       };
 
@@ -200,6 +225,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           payload: { user: adminUser, token }
         });
         
+        // 🔧 FIXED: Connect socket immediately after successful login
+        socketService.connectWithToken(token);
+        
         showSuccessToast('تم تسجيل دخول الأدمن بنجاح!');
         navigateWithDelay('/admin', 1500);
         return;
@@ -224,6 +252,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           type: 'LOGIN_SUCCESS',
           payload: { user: userToUse, token }
         });
+        
+        // 🔧 FIXED: Connect socket immediately after successful login
+        socketService.connectWithToken(token);
         
         showSuccessToast(formatWelcomeMessage(userToUse.firstName, userToUse.lastName));
         // الانتقال للصفحة الرئيسية مع تأخير و loading
@@ -271,6 +302,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         type: 'LOGIN_SUCCESS',
         payload: { user: newUser, token }
       });
+
+      // 🔧 FIXED: Connect socket immediately after successful registration
+      socketService.connectWithToken(token);
 
       // Show success toast for account creation
       showSuccessToast('تم إنشاء الحساب بنجاح!');
@@ -320,6 +354,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         payload: { user: userToUse, token }
       });
 
+      // 🔧 FIXED: Connect socket immediately after successful login
+      socketService.connectWithToken(token);
+
       showSuccessToast(formatWelcomeMessage(userToUse.firstName, userToUse.lastName));
       navigateWithDelay('/', 2500);
     } catch (error: any) {
@@ -330,6 +367,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    // 🔧 FIXED: Disconnect socket before logout
+    socketService.disconnect();
+    
     dispatch({ type: 'LOGOUT' });
     localStorage.removeItem('token');
     localStorage.removeItem('user');
