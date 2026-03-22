@@ -292,6 +292,19 @@ router.post('/:id/message', upload.single('image'), async (req, res) => {
     // Emit real-time message via Socket.io
     const reqIo = req.app.get('io');
     if (reqIo) {
+      // Emit to conversation room for receiveMessage event (primary)
+      reqIo.to(conversationId).emit('receiveMessage', {
+        _id: message._id,
+        conversationId,
+        content: message.content,
+        imageUrl: message.imageUrl,
+        senderId: user?.id || null,
+        senderType,
+        createdAt: message.createdAt,
+        timestamp: new Date()
+      });
+
+      // Legacy newMessage event (for compatibility)
       reqIo.to(conversationId).emit('newMessage', {
         conversationId,
         message,

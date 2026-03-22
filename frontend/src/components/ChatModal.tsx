@@ -150,6 +150,47 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     }, 1000);
   };
 
+  const createConversationWithLastOrder = async () => {
+    try {
+      // Fetch user's orders to find the last one
+      const ordersResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com'}/api/orders`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (ordersResponse.ok) {
+        const orders = await ordersResponse.json();
+        if (orders.length > 0) {
+          const lastOrder = orders[orders.length - 1];
+          const productName = lastOrder.items?.[0]?.name || 'منتج';
+          
+          // Create conversation with product name
+          const conversationResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://alphastore-6rvv.onrender.com'}/api/conversations`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orderId: lastOrder._id,
+              subject: `محادثة حول طلب: ${productName}`,
+              message: 'أود الاستفسار حول طلبي الأخير'
+            })
+          });
+          
+          if (conversationResponse.ok) {
+            console.log('Created conversation with last order:', productName);
+            showSuccessToast(`تم إنشاء محادثة حول: ${productName}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error creating conversation with last order:', error);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       setLoading(true);
@@ -165,8 +206,21 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         // Filter to ensure we only get conversations where current user is involved
         if (Array.isArray(response)) {
           response = response.filter(conv => 
-            conv.customerId === state.user?.id
+            conv.customerId === state.user?._id
           );
+        }
+        
+        // If no conversations exist, create one with last order
+        if (response.length === 0 && state.user?._id) {
+          console.log('No conversations found, creating conversation with last order...');
+          await createConversationWithLastOrder();
+          // Fetch again after creating
+          response = await conversationAPI.getCustomerConversations();
+          if (Array.isArray(response)) {
+            response = response.filter(conv => 
+              conv.customerId === state.user?._id
+            );
+          }
         }
       }
       
@@ -231,7 +285,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     setNewMessage('');
     setSending(true);
     
-    // Don't add message manually - let socket handle it to prevent duplication
+    // Don't add message manually - rely only on socket receiveMessage
     try {
       const message = await conversationAPI.sendMessage(selectedConversation, messageContent);
       
