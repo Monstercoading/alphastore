@@ -282,12 +282,17 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     const messageContent = newMessage.trim();
+    console.log('📤 FRONTEND: Sending message:', messageContent.substring(0, 30));
+    console.log('📤 FRONTEND: Conversation ID:', selectedConversation);
+    console.log('📤 FRONTEND: User ID:', state.user?._id);
+    
     setNewMessage('');
     setSending(true);
     
     // Don't add message manually - rely only on socket receiveMessage
     try {
       const message = await conversationAPI.sendMessage(selectedConversation, messageContent);
+      console.log('📤 FRONTEND: Message saved to server:', message._id);
       
       // Send via socket - this will trigger receiveMessage event
       socketService.sendMessage({
@@ -296,13 +301,14 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
         senderType: state.user?.role === 'admin' ? 'admin' : 'customer',
         senderId: state.user?._id || 'guest'
       });
+      console.log('📤 FRONTEND: Message emitted via socket');
       
       // Don't add to messages manually - rely on socket
       // Removed: setMessages(prev => [...prev, message]);
       
       scrollToBottom();
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('📤 FRONTEND: Error sending message:', error);
       showErrorToast('فشل إرسال الرسالة');
       setNewMessage(messageContent);
     } finally {
@@ -432,15 +438,25 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleReceiveMessage = (data: any) => {
-      console.log('📨 Real-time message received:', data);
+      console.log('� FRONTEND: Message received via socket:', data);
+      console.log('📩 FRONTEND: Current conversation ID:', selectedConversation);
+      console.log('📩 FRONTEND: Match check:', data.conversationId === selectedConversation);
+      
       if (data.conversationId === selectedConversation) {
+        console.log('📩 FRONTEND: Adding message to current chat');
         setMessages(prev => {
           // Check if message already exists to prevent duplicates
           const exists = prev.some(msg => msg._id === data._id);
-          if (exists) return prev;
+          if (exists) {
+            console.log('📩 FRONTEND: Duplicate detected, skipping');
+            return prev;
+          }
+          console.log('📩 FRONTEND: Message added to state');
           return [...prev, data];
         });
         scrollToBottom();
+      } else {
+        console.log('📩 FRONTEND: Message for different conversation, updating sidebar');
       }
       
       // Move conversation to top and update last message
