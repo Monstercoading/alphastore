@@ -2,6 +2,7 @@
   "name": "gaming-accounts-frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@heroicons/react": "^2.0.18",
