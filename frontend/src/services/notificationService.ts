@@ -40,6 +40,13 @@ class NotificationService {
       
       if (!response.ok) throw new Error('Failed to fetch notifications');
       
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.log('Non-JSON response received:', await response.text());
+        throw new Error('Invalid response format from server');
+      }
+      
       return await response.json();
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -76,12 +83,20 @@ class NotificationService {
   // Mark specific notification as read
   async markAsRead(notificationId: string): Promise<void> {
     try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.log('Non-JSON response received for markAsRead:', await response.text());
+        }
+        throw new Error('Failed to mark notification as read');
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -90,7 +105,7 @@ class NotificationService {
   // Mark all notifications of specific type as read
   async markTypeAsRead(type: Notification['type']): Promise<void> {
     try {
-      await fetch('/api/notifications/mark-type-read', {
+      const response = await fetch('/api/notifications/mark-type-read', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -98,6 +113,14 @@ class NotificationService {
         },
         body: JSON.stringify({ type })
       });
+      
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.log('Non-JSON response received for markTypeAsRead:', await response.text());
+        }
+        throw new Error('Failed to mark notifications as read');
+      }
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
