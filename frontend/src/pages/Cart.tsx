@@ -40,13 +40,22 @@ const Cart: React.FC = () => {
 
   const handleSupport = async (orderId?: string) => {
     try {
+      // Debug authentication state
+      console.log('Cart - Auth state:', {
+        isAuthenticated: state.isAuthenticated,
+        token: state.token ? 'exists' : 'missing',
+        user: state.user ? 'exists' : 'missing',
+        userId: state.user?.id
+      });
+      
       // Check if user is authenticated
       if (!state.isAuthenticated || !state.token) {
+        console.log('Cart - Authentication failed');
         showErrorToast('يجب تسجيل الدخول للتواصل مع الدعم الفني');
         return;
       }
       
-      console.log('Opening support chat...');
+      console.log('Cart - Authentication passed - Opening support chat...');
       
       // Only create conversation if orderId is provided
       if (orderId) {

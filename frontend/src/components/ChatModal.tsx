@@ -360,13 +360,23 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
+      // Debug authentication state
+      console.log('Auth state:', {
+        isAuthenticated: state.isAuthenticated,
+        token: state.token ? 'exists' : 'missing',
+        user: state.user ? 'exists' : 'missing',
+        userId: state.user?.id
+      });
+      
       // Check if user is authenticated
       if (!state.isAuthenticated || !state.token) {
+        console.log('Authentication failed - showing error and closing modal');
         showErrorToast('يجب تسجيل الدخول للوصول إلى المحادثات');
         onClose();
         return;
       }
       
+      console.log('Authentication passed - fetching conversations');
       fetchConversations();
       
       // Check for new conversation ID from localStorage
