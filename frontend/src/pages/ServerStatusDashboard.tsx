@@ -476,7 +476,7 @@ const ServerStatusDashboard: React.FC = () => {
       const response = await Promise.race([
         api.get('/auth/verify'),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Token validation timeout')), 5000))
-      ]);
+      ]) as any;
       
       setServerStatus(prev => ({
         ...prev,
@@ -523,7 +523,7 @@ const ServerStatusDashboard: React.FC = () => {
       const response = await Promise.race([
         conversationAPI.getCustomerConversations(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Customer conversations timeout')), 5000))
-      ]);
+      ]) as any;
       
       setServerStatus(prev => ({
         ...prev,
@@ -570,7 +570,7 @@ const ServerStatusDashboard: React.FC = () => {
       const response = await Promise.race([
         conversationAPI.getAdminConversations(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Admin conversations timeout')), 5000))
-      ]);
+      ]) as any;
       
       setServerStatus(prev => ({
         ...prev,
@@ -618,7 +618,7 @@ const ServerStatusDashboard: React.FC = () => {
       const response = await Promise.race([
         conversationAPI.createConversation(mockOrderId),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Create conversation timeout')), 5000))
-      ]);
+      ]) as any;
       
       setServerStatus(prev => ({
         ...prev,
@@ -672,7 +672,7 @@ const ServerStatusDashboard: React.FC = () => {
       const response = await Promise.race([
         api.post(`/conversations/${testConversationId}/messages`, testMessage),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Send message timeout')), 5000))
-      ]);
+      ]) as any;
       
       setServerStatus(prev => ({
         ...prev,
