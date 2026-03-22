@@ -298,7 +298,8 @@ const AdminDashboard: React.FC = () => {
       return () => {
         console.log('Cleaning up conversation polling');
         clearInterval(pollInterval);
-        socketService.off('newConversationMessage');
+        socketService.off('newConversationMessage', handleNewConversationMessage);
+        socketService.off('newMessage', handleNewMessage);
       };
     }
   }, [state.isAuthenticated]);
